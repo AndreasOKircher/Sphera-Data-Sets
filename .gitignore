@@ -1,0 +1,6 @@
+dataset/output/
+dataset/input/
+__pycache__/
+.pytest_cache/
+*.pyc
+.env
