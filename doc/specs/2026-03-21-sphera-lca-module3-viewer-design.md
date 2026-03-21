@@ -62,35 +62,47 @@ python view.py <uuid> --full    # inspect one dataset (full text, no truncation)
 
 ### MUST fields checked in summary header
 
-All 14 fields from `MUST_FIELDS` in `core/parser.py` are checked for null and shown in the header table — even fields that are dropped from the display sections below (e.g. `lci_method_principle`, `lci_method_approaches`). The header is a data quality audit; the sections are a reading interface. These serve different purposes.
+12 fields are checked for null in the header. This is `MUST_FIELDS` from `core/parser.py` minus `lci_method_principle` and `lci_method_approaches` — those two were explicitly dropped from the viewer as low value for inspection.
 
 Fields checked: `uuid`, `name_base`, `synonyms`, `general_comment`, `location`,
 `geographical_representativeness_description`, `reference_year`, `valid_until`,
-`technology_description`, `dataset_type`, `lci_method_principle`,
-`lci_method_approaches`, `dqi_overall_quality`, `classification`
+`technology_description`, `dataset_type`, `dqi_overall_quality`, `classification`
 
 ### Output format for `python view.py <uuid>`
 
 **Part 1 — Summary header (always shown):**
+
+- Line 1: `name_base` (full, may wrap)
+- Line 2: `UUID: <uuid>`
+- Line 3: `<location> · <reference_year>–<valid_until>`
+- Line 4: `<dataset_type>` — own line, no clipping (can be long e.g. "Unit process, black box, single operation")
+
+MUST FIELDS table: field name left-padded to 28 chars, value clipped to 20 chars with `..` if longer, `-` if null. No ✓ / STATUS column — the value itself shows presence; `-` shows absence.
+
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  LED SMD high-efficiency with lens max 0.5A
  UUID: 02d5eba7-3c71-4b93-90c9-fb8758528f57
- GLO · LCI result · 2025–2028
+ GLO · 2025–2028
+ LCI result
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- MUST FIELDS                          STATUS
- uuid                                 ✓
- name_base                            ✓
- classification                       ✓
- location                             ✓
- reference_year                       ✓
- valid_until                          ✓
- technology_description               ✓
- dataset_type                         ✓
- dqi_overall_quality                  ✓  Good
- ...
+ MUST FIELDS                 VALUE
+ uuid                        02d5eba7-3c71-4b93-9..
+ name_base                   LED SMD high-effici..
+ classification              Systems / Electrics..
+ location                    GLO
+ reference_year              2025
+ valid_until                 2028
+ technology_description      NOTE: this dataset ..
+ dataset_type                LCI result
+ dqi_overall_quality         Good
+ synonyms                    Integrated circuit,..
+ general_comment             The data set covers..
+ geographical_repres..       This dataset repres..
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+Field names longer than 28 chars are also clipped with `..` (e.g. `geographical_representativeness_description` → `geographical_repres..`).
 
 **Part 2 — Full sections (printed below header, user scrolls terminal):**
 - Each section printed with a bold heading
