@@ -28,3 +28,16 @@ def test_network_error_raises_download_error():
     with patch("core.downloader.requests.get", side_effect=Exception("Connection refused")):
         with pytest.raises(DownloadError):
             download_xml("https://example.com/test.xml")
+
+
+def test_headers_passed_to_request():
+    mock_response = Mock()
+    mock_response.content = b"<processDataSet/>"
+    mock_response.raise_for_status = Mock()
+
+    with patch("core.downloader.requests.get", return_value=mock_response) as mock_get:
+        download_xml("https://example.com/test.xml", headers={"Cookie": "session=abc"})
+
+    mock_get.assert_called_once_with(
+        "https://example.com/test.xml", timeout=30, headers={"Cookie": "session=abc"}
+    )
