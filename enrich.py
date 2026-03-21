@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -15,7 +16,7 @@ from dotenv import load_dotenv
 load_dotenv()  # loads .env before using os.environ
 
 # Local
-from core.enricher import FORMAT_SYSTEM, SUMMARY_SYSTEM, verify_counts
+from core.enricher import FORMAT_SYSTEM, SUMMARY_SYSTEM, count_words, verify_counts
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -66,24 +67,30 @@ def process_one(uuid: str, client: anthropic.Anthropic, model: str, force: bool,
         print(f"[SKIP] {uuid[:8]} — no technology_description field")
         return
 
-    try:
-        # Summary call
-        resp = client.messages.create(
-            model=model,
-            max_tokens=300,
-            system=SUMMARY_SYSTEM,
-            messages=[{"role": "user", "content": tech}],
-        )
-        summary = resp.content[0].text
+    word_count = count_words(tech)
+    if word_count < 100:
+        print(f"[SKIP] {uuid[:8]} — technology_description too short ({word_count} words, min 100)")
+        return
 
-        # Format call
-        resp = client.messages.create(
-            model=model,
-            max_tokens=16000,
-            system=FORMAT_SYSTEM,
-            messages=[{"role": "user", "content": tech}],
-        )
-        formatted = resp.content[0].text
+    try:
+        # Fire both API calls in parallel
+        def _summary_call():
+            return client.messages.create(
+                model=model, max_tokens=300, system=SUMMARY_SYSTEM,
+                messages=[{"role": "user", "content": tech}],
+            )
+
+        def _format_call():
+            return client.messages.create(
+                model=model, max_tokens=16000, system=FORMAT_SYSTEM,
+                messages=[{"role": "user", "content": tech}],
+            )
+
+        with ThreadPoolExecutor(max_workers=2) as ex:
+            f_summary = ex.submit(_summary_call)
+            f_format = ex.submit(_format_call)
+            summary = f_summary.result().content[0].text
+            formatted = f_format.result().content[0].text
 
         counts = verify_counts(tech, formatted, threshold_pct=threshold)
 
@@ -100,14 +107,19 @@ def process_one(uuid: str, client: anthropic.Anthropic, model: str, force: bool,
         w_sign = "\u2212" if w_diff < 0 else "+"
         c_sign = "\u2212" if c_diff < 0 else "+"
 
+        # Always print original + summary for comparison
+        orig_preview = tech[:300].replace('\n', ' ')
+        print(f"\n  Original : {orig_preview}{'...' if len(tech) > 300 else ''}")
+        print(f"  Summary  : {summary.strip()}")
+
         if not counts["ok"]:
             w_flag = "\u2705" if w_pct <= threshold else "\u274c"
             c_flag = "\u2705" if c_pct <= threshold else "\u274c"
+            fmt_preview = formatted[:300].replace('\n', ' ')
+            print(f"  Formatted: {fmt_preview}{'...' if len(formatted) > 300 else ''}")
             print(f"[FAIL] {uuid[:8]} — {name}")
             print(f"       Words: {w_orig:,} \u2192 {w_new:,}  ({w_sign}{abs(w_diff)} words, {w_pct:.1f}%) {w_flag}  — not saved")
             print(f"       Chars: {c_orig:,} \u2192 {c_new:,}  ({c_sign}{abs(c_diff)} chars, {c_pct:.1f}%) {c_flag}  — not saved")
-            preview = formatted[:400].replace('\n', ' ')
-            print(f"       Preview: {preview}{'...' if len(formatted) > 400 else ''}")
             return
 
         # Write enriched file
