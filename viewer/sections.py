@@ -7,21 +7,11 @@ SECTIONS = [
     ("Identity", [
         "uuid", "name_base", "general_comment", "synonyms", "classification",
     ]),
-    ("Time", [
-        "reference_year", "valid_until",
-    ]),
-    ("Location", [
-        "location", "geographical_representativeness_description",
-    ]),
     ("Technology", [
         "technology_description", "technological_applicability",
     ]),
-    ("Modelling", [
-        "dataset_type",
-    ]),
-    ("Data Sources", [
-        "data_cutoff_principles", "data_selection_principles",
-        "supply_coverage_percent",
+    ("Time", [
+        "reference_year", "valid_until",
     ]),
     ("DQI", [
         "dqi_overall_quality", "dqi_technological_representativeness",
@@ -31,6 +21,16 @@ SECTIONS = [
     ]),
     ("Notes", [
         "use_advice", "reference_flows",
+    ]),
+    ("Location", [
+        "location", "geographical_representativeness_description",
+    ]),
+    ("Modelling", [
+        "dataset_type",
+    ]),
+    ("Data Sources", [
+        "data_cutoff_principles", "data_selection_principles",
+        "supply_coverage_percent",
     ]),
     ("Other", [
         "name_treatment_standards_routes", "name_mix_and_location_types",
@@ -49,4 +49,4 @@ MUST_FIELDS = [
 ]
 
 # Sections open by default in web detail view
-DEFAULT_OPEN = {"Identity", "Time", "Location", "DQI"}
+DEFAULT_OPEN = {"Identity", "Technology", "Time", "DQI"}
