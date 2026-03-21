@@ -161,7 +161,7 @@ class TestVerifyCounts:
         result = verify_counts(original, formatted)
         assert result["word_count_diff_pct"] == pytest.approx(2.0)
 
-    def test_threshold_exactly_2pct_ok_true(self):
+    def test_word_diff_exactly_2pct_ok_true_at_3pct_threshold(self):
         # 100 words original, 98 words formatted → word diff = 2.0% exactly
         # char diff is ~2.004% so use threshold_pct=3.0 to confirm ok=True
         # when both word and char diffs are within the given threshold
@@ -170,6 +170,7 @@ class TestVerifyCounts:
         result = verify_counts(original, formatted, threshold_pct=3.0)
         assert result["ok"] is True
         assert result["word_count_diff_pct"] <= 2.0
+        assert result["word_count_diff_pct"] == pytest.approx(2.0)
 
     def test_threshold_boundary_both_at_2pct(self):
         # Verify ok=True when word diff is ~2% and char diff is also ~2%
