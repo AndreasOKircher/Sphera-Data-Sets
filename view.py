@@ -88,16 +88,46 @@ def print_header(data: dict) -> None:
     print(SEP)
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Sphera dataset viewer")
+def print_sections(data: dict, full: bool = False) -> None:
+    """Print all field sections below the header."""
+    TRUNC = 200
+    for section_name, fields in SECTIONS:
+        print(f"\n {'[ ' + section_name + ' ]':─<48}")
+        for field in fields:
+            raw = data.get(field)
+            if raw is None:
+                print(f"  {field}: —")
+            else:
+                text = str(raw)
+                if not full and len(text) > TRUNC:
+                    hidden = len(text) - TRUNC
+                    text = text[:TRUNC] + f" [... {hidden} chars hidden — use --full to show]"
+                print(f"  {field}: {text}")
+
+
+def inspect_dataset(uuid: str, full: bool = False) -> None:
+    """Inspect a single dataset by UUID."""
+    data = load_one(uuid)
+    if data is None:
+        print(f"[ERROR] UUID not found: {uuid}")
+        print()
+        list_datasets()
+        return
+    print_header(data)
+    print_sections(data, full=full)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="View Sphera LCA datasets.")
     parser.add_argument("uuid", nargs="?", help="Dataset UUID to inspect")
+    parser.add_argument("--full", action="store_true", help="Show full text without truncation")
     args = parser.parse_args()
 
-    if args.uuid is None:
-        list_datasets()
+    if args.uuid:
+        inspect_dataset(args.uuid, full=args.full)
     else:
-        data = load_one(args.uuid)
-        if data is None:
-            print(f"Dataset not found: {args.uuid}", file=sys.stderr)
-            sys.exit(1)
-        print_header(data)
+        list_datasets()
+
+
+if __name__ == "__main__":
+    main()
