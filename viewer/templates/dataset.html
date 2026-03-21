@@ -8,7 +8,14 @@
 
 <div style="background:#fff; border:1px solid #ddd; border-radius:8px; padding:20px; margin-bottom:20px;">
   <h1 style="font-size:20px; margin-bottom:6px; line-height:1.4;">{{ data.name_base or "—" }}</h1>
-  <p style="font-size:12px; color:#888;">UUID: {{ data.uuid or "—" }}</p>
+  <p style="font-size:12px; color:#888; display:flex; align-items:center; gap:8px;">
+    <span>UUID: {{ data.uuid or "—" }}</span>
+    {% if data.uuid %}
+    <button id="copy-btn" onclick="copyUUID()"
+      style="padding:2px 8px; font-size:11px; border:1px solid #ccc; border-radius:3px;
+             background:#fff; cursor:pointer; color:#555;">Copy</button>
+    {% endif %}
+  </p>
 </div>
 
 <div style="margin-bottom:16px; display:flex; justify-content:flex-end;">
@@ -93,6 +100,14 @@ function updateToggleButton() {
   const openCount = [...sections].filter(s => s.querySelector('.section-body').style.display !== 'none').length;
   const btn = document.getElementById('toggle-all');
   btn.textContent = openCount === sections.length ? 'Collapse all' : 'Expand all';
+}
+
+function copyUUID() {
+  navigator.clipboard.writeText('{{ data.uuid }}').then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1500);
+  });
 }
 
 function toggleText(link) {

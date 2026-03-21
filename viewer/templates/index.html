@@ -1,16 +1,25 @@
 {% extends "base.html" %}
 {% block title %}Datasets — Sphera LCA Viewer{% endblock %}
 {% block content %}
-<div style="margin-bottom:16px; display:flex; align-items:center; gap:16px;">
+<div style="margin-bottom:16px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
   <h1 style="font-size:22px;">Datasets</h1>
-  <input id="search" type="text" placeholder="Search by name..." oninput="filterCards()"
+  <input id="search" type="text" placeholder="Search by name..." oninput="filterAll()"
     style="padding:6px 12px; border:1px solid #ccc; border-radius:4px; font-size:14px; width:300px;">
+  <div style="margin-left:auto; display:flex; gap:0;">
+    <button id="btn-cards" onclick="setView('cards')"
+      style="padding:5px 14px; border:1px solid #ccc; border-radius:4px 0 0 4px;
+             background:#1a1a2e; color:#fff; cursor:pointer; font-size:13px;">Cards</button>
+    <button id="btn-list" onclick="setView('list')"
+      style="padding:5px 14px; border:1px solid #ccc; border-left:none; border-radius:0 4px 4px 0;
+             background:#fff; color:#222; cursor:pointer; font-size:13px;">List</button>
+  </div>
 </div>
 
 {% if not datasets %}
   <p style="color:#666;">No datasets found in <code>dataset/output/</code>. Run the downloader first.</p>
 {% else %}
-  <div id="cards" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(340px,1fr)); gap:16px;">
+  <!-- Card view -->
+  <div id="view-cards" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(340px,1fr)); gap:16px;">
     {% for d in datasets %}
     <a href="/dataset/{{ d.uuid }}" style="display:block; text-decoration:none; color:inherit;"
        data-name="{{ (d.name_base or '') | lower }}">
@@ -33,20 +42,86 @@
             {% set dqi_class = "badge-dqi-very-good" if "very" in (d.dqi_overall_quality | lower) else "badge-dqi-good" if "good" in (d.dqi_overall_quality | lower) else "badge-dqi-other" %}
             <span class="badge {{ dqi_class }}">DQI: {{ d.dqi_overall_quality }}</span>
           {% endif %}
+          {% if d.supply_coverage_percent is not none %}
+            {% set supply_class = "badge-supply-good" if d.supply_coverage_percent >= 90 else "badge-supply-other" %}
+            <span class="badge {{ supply_class }}">Supply: {{ d.supply_coverage_percent | int }}%</span>
+          {% endif %}
         </div>
       </div>
     </a>
     {% endfor %}
   </div>
-  <p style="margin-top:20px; color:#666; font-size:13px;">{{ datasets | length }} datasets loaded</p>
+
+  <!-- List view -->
+  <div id="view-list" style="display:none;">
+    <table style="width:100%; border-collapse:collapse; background:#fff; border-radius:8px; overflow:hidden; border:1px solid #ddd; font-size:13px;">
+      <thead>
+        <tr style="background:#f0f4ff; font-weight:bold; text-align:left;">
+          <th style="padding:10px 12px; border-bottom:1px solid #ddd;">Name</th>
+          <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:80px;">Location</th>
+          <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:55px;">Year</th>
+          <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:120px;">Type</th>
+          <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:110px;">DQI</th>
+          <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:75px;">Supply</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in datasets %}
+        <tr onclick="window.location='/dataset/{{ d.uuid }}'" style="cursor:pointer; border-bottom:1px solid #f0f0f0;"
+            data-name="{{ (d.name_base or '') | lower }}"
+            onmouseover="this.style.background='#f5f8ff'" onmouseout="this.style.background=''">
+          <td style="padding:8px 12px;">{{ d.name_base or "—" }}</td>
+          <td style="padding:8px 12px;">{{ d.location or "—" }}</td>
+          <td style="padding:8px 12px;">{{ d.reference_year or "—" }}</td>
+          <td style="padding:8px 12px;">{{ d.dataset_type or "—" }}</td>
+          <td style="padding:8px 12px;">
+            {% if d.dqi_overall_quality %}
+              {% set dqi_class = "badge-dqi-very-good" if "very" in (d.dqi_overall_quality | lower) else "badge-dqi-good" if "good" in (d.dqi_overall_quality | lower) else "badge-dqi-other" %}
+              <span class="badge {{ dqi_class }}">{{ d.dqi_overall_quality }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td style="padding:8px 12px;">
+            {% if d.supply_coverage_percent is not none %}
+              {% set supply_class = "badge-supply-good" if d.supply_coverage_percent >= 90 else "badge-supply-other" %}
+              <span class="badge {{ supply_class }}">{{ d.supply_coverage_percent | int }}%</span>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <p id="count-label" style="margin-top:20px; color:#666; font-size:13px;">{{ datasets | length }} datasets loaded</p>
 {% endif %}
 
 <script>
-function filterCards() {
+let currentView = 'cards';
+
+function setView(v) {
+  currentView = v;
+  document.getElementById('view-cards').style.display = v === 'cards' ? 'grid' : 'none';
+  document.getElementById('view-list').style.display = v === 'list' ? '' : 'none';
+  document.getElementById('btn-cards').style.background = v === 'cards' ? '#1a1a2e' : '#fff';
+  document.getElementById('btn-cards').style.color = v === 'cards' ? '#fff' : '#222';
+  document.getElementById('btn-list').style.background = v === 'list' ? '#1a1a2e' : '#fff';
+  document.getElementById('btn-list').style.color = v === 'list' ? '#fff' : '#222';
+}
+
+function filterAll() {
   const q = document.getElementById('search').value.toLowerCase();
-  document.querySelectorAll('#cards > a').forEach(card => {
-    card.style.display = card.dataset.name.includes(q) ? '' : 'none';
+  let visible = 0;
+  document.querySelectorAll('#view-cards > a').forEach(el => {
+    const show = el.dataset.name.includes(q);
+    el.style.display = show ? '' : 'none';
+    if (show) visible++;
   });
+  document.querySelectorAll('#view-list tbody tr').forEach(el => {
+    el.style.display = el.dataset.name.includes(q) ? '' : 'none';
+  });
+  const total = {{ datasets | length }};
+  const label = document.getElementById('count-label');
+  if (label) label.textContent = q ? `${visible} of ${total} datasets` : `${total} datasets loaded`;
 }
 </script>
 {% endblock %}
