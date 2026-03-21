@@ -1,7 +1,7 @@
 """Pure text utility functions for LCA dataset enrichment."""
 
 import anthropic
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TypedDict
 
 _STRIP_CHARS = str.maketrans("", "", "#*_`")
@@ -163,7 +163,7 @@ def enrich_dataset(data: dict, client: anthropic.Anthropic, model: str) -> dict 
 
     return {
         "uuid": data["uuid"],
-        "enriched_at": datetime.utcnow().isoformat(),
+        "enriched_at": datetime.now(tz=timezone.utc).isoformat(),
         "technology_description_word_count": counts["word_count"],
         "technology_description_formatted_word_count": counts["formatted_word_count"],
         "technology_description_word_count_diff": counts["word_count_diff"],
