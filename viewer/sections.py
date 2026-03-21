@@ -5,7 +5,7 @@
 
 SECTIONS = [
     ("Identity", [
-        "uuid", "name_base", "general_comment", "synonyms", "classification",
+        "uuid", "name_base", "name_functional_unit", "general_comment", "synonyms", "classification",
     ]),
     ("Technology", [
         "technology_description", "technological_applicability",
@@ -32,9 +32,8 @@ SECTIONS = [
         "data_cutoff_principles", "data_selection_principles",
         "supply_coverage_percent",
     ]),
-    ("Other", [
+    ("Name Details", [
         "name_treatment_standards_routes", "name_mix_and_location_types",
-        "name_functional_unit",
     ]),
 ]
 

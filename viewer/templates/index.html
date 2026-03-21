@@ -57,12 +57,12 @@
     <table style="width:100%; border-collapse:collapse; background:#fff; border-radius:8px; overflow:hidden; border:1px solid #ddd; font-size:13px;">
       <thead>
         <tr style="background:#f0f4ff; font-weight:bold; text-align:left;">
-          <th style="padding:10px 12px; border-bottom:1px solid #ddd;">Name</th>
-          <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:80px;">Location</th>
-          <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:55px;">Year</th>
-          <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:120px;">Type</th>
-          <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:110px;">DQI</th>
-          <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:75px;">Supply</th>
+          <th onclick="sortTable(0,false)" style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none;">Name <span class="si">⇅</span></th>
+          <th onclick="sortTable(1,false)" style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:80px;">Location <span class="si">⇅</span></th>
+          <th onclick="sortTable(2,true)"  style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:55px;">Year <span class="si">⇅</span></th>
+          <th onclick="sortTable(3,false)" style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:120px;">Type <span class="si">⇅</span></th>
+          <th onclick="sortTable(4,false)" style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:110px;">DQI <span class="si">⇅</span></th>
+          <th onclick="sortTable(5,true)"  style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:75px;">Supply <span class="si">⇅</span></th>
         </tr>
       </thead>
       <tbody>
@@ -95,8 +95,35 @@
   <p id="count-label" style="margin-top:20px; color:#666; font-size:13px;">{{ datasets | length }} datasets loaded</p>
 {% endif %}
 
+<style>
+  #view-list th .si { color: #999; font-weight: normal; font-size: 11px; }
+  #view-list th:hover { background: #e8eeff; }
+</style>
 <script>
 let currentView = 'cards';
+let sortCol = -1;
+let sortAsc = true;
+
+function sortTable(colIdx, isNumeric) {
+  const tbody = document.querySelector('#view-list tbody');
+  const rows = [...tbody.querySelectorAll('tr')];
+  sortAsc = sortCol === colIdx ? !sortAsc : true;
+  sortCol = colIdx;
+  rows.sort((a, b) => {
+    const aText = a.cells[colIdx].textContent.trim().replace(/[^0-9.]/g, '') || a.cells[colIdx].textContent.trim();
+    const bText = b.cells[colIdx].textContent.trim().replace(/[^0-9.]/g, '') || b.cells[colIdx].textContent.trim();
+    if (isNumeric) {
+      const aNum = parseFloat(aText) || 0;
+      const bNum = parseFloat(bText) || 0;
+      return sortAsc ? aNum - bNum : bNum - aNum;
+    }
+    return sortAsc ? aText.localeCompare(bText) : bText.localeCompare(aText);
+  });
+  rows.forEach(r => tbody.appendChild(r));
+  document.querySelectorAll('#view-list th .si').forEach((si, i) => {
+    si.textContent = i === colIdx ? (sortAsc ? '▲' : '▼') : '⇅';
+  });
+}
 
 function setView(v) {
   currentView = v;
