@@ -1,7 +1,8 @@
 """Tests for core/enricher.py pure text utility functions."""
 
 import pytest
-from core.enricher import clean_text, count_words, count_chars, verify_counts
+from unittest.mock import MagicMock
+from core.enricher import clean_text, count_words, count_chars, verify_counts, enrich_dataset
 
 
 # ---------------------------------------------------------------------------
@@ -244,3 +245,63 @@ class TestVerifyCounts:
         assert result["char_count"] == 5
         assert result["formatted_char_count"] == 11
         assert result["char_count_diff"] == 6
+
+
+# ---------------------------------------------------------------------------
+# enrich_dataset
+# ---------------------------------------------------------------------------
+
+class TestEnrichDataset:
+    def test_enrich_dataset_missing_field_returns_none(self):
+        mock_client = MagicMock()
+        result = enrich_dataset({"uuid": "abc"}, mock_client, "claude-haiku-4-5-20251001")
+        assert result is None
+
+    def test_enrich_dataset_empty_field_returns_none(self):
+        mock_client = MagicMock()
+        result = enrich_dataset(
+            {"uuid": "abc", "technology_description": ""},
+            mock_client,
+            "claude-haiku-4-5-20251001",
+        )
+        assert result is None
+
+    def test_enrich_dataset_success(self):
+        mock_client = MagicMock()
+        # Formatted text uses bold (**) which strips away, so word/char counts
+        # stay identical to the original and verify_counts returns ok=True.
+        mock_client.messages.create.side_effect = [
+            MagicMock(content=[MagicMock(text="A plain summary.")]),
+            MagicMock(content=[MagicMock(text="**The** original text.")]),
+        ]
+        data = {"uuid": "test-uuid", "technology_description": "The original text."}
+        result = enrich_dataset(data, mock_client, "claude-haiku-4-5-20251001")
+        assert result is not None
+        assert result["uuid"] == "test-uuid"
+        assert result["technology_description_summary"] == "A plain summary."
+        assert result["technology_description_formatted"] == "**The** original text."
+        assert "ok" not in result
+        assert len(result) == 12
+
+    def test_enrich_dataset_fail_on_threshold(self):
+        mock_client = MagicMock()
+        # Original: 3 words. Formatted: 100 words — way above 2% threshold.
+        original_text = "one two three"
+        bloated_formatted = " ".join(["word"] * 100)
+        mock_client.messages.create.side_effect = [
+            MagicMock(content=[MagicMock(text="A plain summary.")]),
+            MagicMock(content=[MagicMock(text=bloated_formatted)]),
+        ]
+        data = {"uuid": "abc", "technology_description": original_text}
+        result = enrich_dataset(data, mock_client, "claude-haiku-4-5-20251001")
+        assert result is None
+
+    def test_enrich_dataset_calls_api_twice(self):
+        mock_client = MagicMock()
+        mock_client.messages.create.side_effect = [
+            MagicMock(content=[MagicMock(text="A plain summary.")]),
+            MagicMock(content=[MagicMock(text="**The** original text.")]),
+        ]
+        data = {"uuid": "test-uuid", "technology_description": "The original text."}
+        enrich_dataset(data, mock_client, "claude-haiku-4-5-20251001")
+        assert mock_client.messages.create.call_count == 2
