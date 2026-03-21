@@ -133,6 +133,9 @@ def process_one(uuid: str, client: anthropic.Anthropic, model: str, force: bool)
     except anthropic.APIError as exc:
         print(f"[FAIL] {uuid[:8]} — API error: {exc}", file=sys.stderr)
         return
+    except Exception as exc:
+        print(f"[FAIL] {uuid[:8]} — unexpected error: {exc}", file=sys.stderr)
+        return
 
 
 # ---------------------------------------------------------------------------
