@@ -9,6 +9,7 @@ OUTPUT_DIR = Path("dataset/output")
 SEP = "━" * 50
 FIELD_W = 28   # field name column width
 VALUE_W = 20   # value column width
+TRUNC = 200    # terminal truncation limit for section field values
 
 
 def _clip(text: str, width: int) -> str:
@@ -90,7 +91,6 @@ def print_header(data: dict) -> None:
 
 def print_sections(data: dict, full: bool = False) -> None:
     """Print all field sections below the header."""
-    TRUNC = 200
     for section_name, fields in SECTIONS:
         print(f"\n {'[ ' + section_name + ' ]':─<48}")
         for field in fields:
@@ -109,7 +109,7 @@ def inspect_dataset(uuid: str, full: bool = False) -> None:
     """Inspect a single dataset by UUID."""
     data = load_one(uuid)
     if data is None:
-        print(f"[ERROR] UUID not found: {uuid}")
+        print(f"[ERROR] UUID not found: {uuid}", file=sys.stderr)
         print()
         list_datasets()
         return
