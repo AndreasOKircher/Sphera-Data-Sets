@@ -110,14 +110,14 @@ function sortTable(colIdx, isNumeric) {
   sortAsc = sortCol === colIdx ? !sortAsc : true;
   sortCol = colIdx;
   rows.sort((a, b) => {
-    const aText = a.cells[colIdx].textContent.trim().replace(/[^0-9.]/g, '') || a.cells[colIdx].textContent.trim();
-    const bText = b.cells[colIdx].textContent.trim().replace(/[^0-9.]/g, '') || b.cells[colIdx].textContent.trim();
+    const aRaw = a.cells[colIdx].textContent.trim();
+    const bRaw = b.cells[colIdx].textContent.trim();
     if (isNumeric) {
-      const aNum = parseFloat(aText) || 0;
-      const bNum = parseFloat(bText) || 0;
+      const aNum = parseFloat(aRaw.replace(/[^0-9.]/g, '')) || 0;
+      const bNum = parseFloat(bRaw.replace(/[^0-9.]/g, '')) || 0;
       return sortAsc ? aNum - bNum : bNum - aNum;
     }
-    return sortAsc ? aText.localeCompare(bText) : bText.localeCompare(aText);
+    return sortAsc ? aRaw.localeCompare(bRaw) : bRaw.localeCompare(aRaw);
   });
   rows.forEach(r => tbody.appendChild(r));
   document.querySelectorAll('#view-list th .si').forEach((si, i) => {
