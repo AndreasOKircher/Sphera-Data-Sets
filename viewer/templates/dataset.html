@@ -2,6 +2,21 @@
 {% block title %}{{ data.name_base or data.uuid }} — Sphera LCA Viewer{% endblock %}
 {% block content %}
 
+<script>
+function renderMarkdown(text) {
+  if (!text) return '';
+  let html = text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/^## (.+)$/gm, '<h2 style="font-size:14px;font-weight:bold;margin:12px 0 4px;">$1</h2>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // paragraph breaks: blank lines between text blocks
+  html = html.split(/\n\n+/).map(p => p.trim()).filter(p => p)
+    .map(p => p.startsWith('<h2') ? p : `<p style="margin:0 0 8px;">${p}</p>`)
+    .join('');
+  return html;
+}
+</script>
+
 <div style="margin-bottom:16px;">
   <a href="/" style="font-size:13px;">← Back to list</a>
 </div>
@@ -40,9 +55,77 @@
     <span class="arrow" style="font-size:12px; color:#666;">{% if is_open %}▼{% else %}▶{% endif %}</span>
   </div>
   <div class="section-body" style="display:{% if is_open %}block{% else %}none{% endif %}; padding:12px 16px;">
+    {% if section_name == "Technology" and enriched.get('technology_description_summary') %}
+      <!-- Summary card -->
+      <div style="background:#f0f7ff; border:1px solid #b3d4f5; border-radius:6px; padding:12px 14px; margin-bottom:12px;">
+        <div style="font-size:11px; font-weight:bold; color:#1d4ed8; margin-bottom:6px; text-transform:uppercase; letter-spacing:.05em;">Summary</div>
+        <div style="font-size:13px; line-height:1.6; color:#222;">{{ enriched.technology_description_summary }}</div>
+      </div>
+
+      <!-- Count stats -->
+      {% set w_ok = enriched.technology_description_word_count_diff_pct <= 2.0 %}
+      {% set c_ok = enriched.technology_description_char_count_diff_pct <= 2.0 %}
+      {% set both_ok = w_ok and c_ok %}
+      <div style="font-size:12px; color:#555; margin-bottom:12px; display:flex; gap:16px; flex-wrap:wrap;">
+        <span>
+          Words: {{ enriched.technology_description_word_count | int }} → {{ enriched.technology_description_formatted_word_count | int }}
+          ({{ "%+d" | format(enriched.technology_description_word_count_diff | int) }}, {{ "%.1f" | format(enriched.technology_description_word_count_diff_pct) }}%)
+          {% if w_ok %}✅{% else %}❌{% endif %}
+        </span>
+        <span>|</span>
+        <span>
+          Chars: {{ enriched.technology_description_char_count | int }} → {{ enriched.technology_description_formatted_char_count | int }}
+          ({{ "%+d" | format(enriched.technology_description_char_count_diff | int) }}, {{ "%.1f" | format(enriched.technology_description_char_count_diff_pct) }}%)
+          {% if c_ok %}✅{% else %}❌{% endif %}
+        </span>
+        {% if not both_ok %}
+          <span style="color:#dc2626;">— review recommended</span>
+        {% endif %}
+      </div>
+    {% endif %}
     <table style="width:100%; border-collapse:collapse; font-size:13px;">
       {% for field in fields %}
       {% set val = data.get(field) %}
+      {% if section_name == "Technology" and field == "technology_description" and enriched.get('technology_description_formatted') %}
+      <tr style="border-bottom:1px solid #f0f0f0;">
+        <td style="padding:6px 8px 6px 0; color:#555; width:260px; vertical-align:top; white-space:nowrap;">
+          technology_description
+          <div style="margin-top:4px; display:flex; gap:0;">
+            <button id="btn-fmt" onclick="showFmt()"
+              style="padding:2px 10px; font-size:11px; border:1px solid #ccc; border-radius:3px 0 0 3px;
+                     background:#1a1a2e; color:#fff; cursor:pointer;">Formatted</button>
+            <button id="btn-orig" onclick="showOrig()"
+              style="padding:2px 10px; font-size:11px; border:1px solid #ccc; border-left:none; border-radius:0 3px 3px 0;
+                     background:#fff; color:#222; cursor:pointer;">Original</button>
+          </div>
+        </td>
+        <td style="padding:6px 0; vertical-align:top;">
+          <div id="td-fmt" style="font-size:13px; line-height:1.6;">
+            <!-- rendered by renderMarkdown() on page load -->
+          </div>
+          <div id="td-orig" style="display:none; font-size:13px; line-height:1.6; white-space:pre-wrap;">{{ val }}</div>
+        </td>
+      </tr>
+      <script>
+        document.getElementById('td-fmt').innerHTML = renderMarkdown({{ enriched.technology_description_formatted | tojson }});
+        function showFmt() {
+          document.getElementById('td-fmt').style.display = '';
+          document.getElementById('td-orig').style.display = 'none';
+          document.getElementById('btn-fmt').style.background = '#1a1a2e';
+          document.getElementById('btn-fmt').style.color = '#fff';
+          document.getElementById('btn-orig').style.background = '#fff';
+          document.getElementById('btn-orig').style.color = '#222';
+        }
+        function showOrig() {
+          document.getElementById('td-fmt').style.display = 'none';
+          document.getElementById('td-orig').style.display = '';
+          document.getElementById('btn-fmt').style.background = '#fff';
+          document.getElementById('btn-fmt').style.color = '#222';
+          document.getElementById('btn-orig').style.background = '#1a1a2e';
+          document.getElementById('btn-orig').style.color = '#fff';
+        }
+      </script>
+      {% else %}
       <tr style="border-bottom:1px solid #f0f0f0;">
         <td style="padding:6px 8px 6px 0; color:#555; width:260px; vertical-align:top; white-space:nowrap;">
           {{ field }}
@@ -64,6 +147,7 @@
           {% endif %}
         </td>
       </tr>
+      {% endif %}
       {% endfor %}
     </table>
   </div>

@@ -9,6 +9,7 @@ from flask import Flask, render_template, abort
 from viewer.sections import SECTIONS, DEFAULT_OPEN
 
 OUTPUT_DIR = Path(__file__).parent.parent / "dataset" / "output"
+ENRICHED_DIR = Path(__file__).parent.parent / "dataset" / "enriched"
 
 app = Flask(__name__)
 
@@ -28,6 +29,17 @@ def load_all() -> list[dict]:
         except Exception as e:
             print(f"[WARN] skipping {f.name}: {e}", file=sys.stderr)
     return datasets
+
+
+def load_enriched(uuid: str) -> dict:
+    path = ENRICHED_DIR / f"{uuid}.json"
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception as e:
+        print(f"[WARN] could not read enriched {path.name}: {e}", file=sys.stderr)
+        return {}
 
 
 def load_one(uuid: str) -> dict | None:
@@ -57,6 +69,7 @@ def dataset_detail(uuid):
         data=data,
         sections=SECTIONS,
         default_open=DEFAULT_OPEN,
+        enriched=load_enriched(uuid),
     )
 
 
