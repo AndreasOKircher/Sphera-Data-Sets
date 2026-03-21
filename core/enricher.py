@@ -104,14 +104,14 @@ def verify_counts(
     }
 
 
-_SUMMARY_SYSTEM = (
+SUMMARY_SYSTEM = (
     "You are a technical writer specializing in Life Cycle Assessment (LCA). Write a "
     "3-5 sentence plain-language summary of the following technology description. Focus "
     "on what the process is, what it produces, and its key characteristics. Do not add "
     "any information not present in the original text."
 )
 
-_FORMAT_SYSTEM = (
+FORMAT_SYSTEM = (
     "You are a technical editor. Reformat the following text for readability by adding "
     "paragraph breaks, markdown headers (##) for major sections, and bold (**) for key "
     "terms. Do NOT change, add, or remove any words. Return only the reformatted "
@@ -144,7 +144,7 @@ def enrich_dataset(data: dict, client: anthropic.Anthropic, model: str) -> dict 
     resp = client.messages.create(
         model=model,
         max_tokens=300,
-        system=_SUMMARY_SYSTEM,
+        system=SUMMARY_SYSTEM,
         messages=[{"role": "user", "content": technology_description}],
     )
     summary = resp.content[0].text
@@ -152,7 +152,7 @@ def enrich_dataset(data: dict, client: anthropic.Anthropic, model: str) -> dict 
     resp = client.messages.create(
         model=model,
         max_tokens=16000,
-        system=_FORMAT_SYSTEM,
+        system=FORMAT_SYSTEM,
         messages=[{"role": "user", "content": technology_description}],
     )
     formatted = resp.content[0].text
