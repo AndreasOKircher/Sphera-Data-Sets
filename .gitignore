@@ -1,7 +1,27 @@
+# --- Python ---
+**/__pycache__/
+**/.pytest_cache/
+*.pyc
+
+# --- Virtual environment ---
+.venv/
+
+# --- Dataset files ---
+# Output: entire directory excluded (downloaded XML/JSON, fail reports)
 dataset/output/
+# Input: exclude everything except .txt URL lists
 dataset/input/*
 !dataset/input/*.txt
-__pycache__/
-.pytest_cache/
-*.pyc
+
+# --- Secrets ---
 .env
+cookie.txt
+
+# --- IDE / tooling ---
+.vscode/
+.claude/
+
+# --- Scratch / source material ---
+tmp/
+ressources/
+test_urls.txt

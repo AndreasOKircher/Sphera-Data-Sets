@@ -1,0 +1,75 @@
+Python Script
+
+Sphera Data Set Compilation
+
+In a web data base there are documents on LCA (Live Cycle Assessement) data sets from company sphera.
+These docu data sets shall be processed, beautified and "localised" for further processing.
+
+Input
+	list of web adresses with sphera data set on LCA
+
+	Example : https://lcadatabase.sphera.com/2026/xml-data/processes/9f2f5c2f-f304-4de0-8988-b0eaccdf7dff.xml
+		  https://lcadatabase.sphera.com/2026/xml-data/processes/0b84ad00-c47c-427e-87d2-88da5b74402e.xml
+
+Task:
+	Get documentation Data - Module 1
+
+	Download sphera documentation data set from given web adress using beautifull soup (or comparable libary)
+	Data sets are represented by given data structure of website 
+	Potentially store internal in panda or equivalent
+	Export / Save in various formats (JSON, XML : open for suggestions, shall be later readable for LLM)
+		V1.0 : JSON, XML only text without PNG / JPG 
+		V1.1 : Save all datasets in CSV or XLS file (still maintaining JSON or XML structure, open for suggestions, shall be later readable for LLM)
+	
+
+	Beautifify and make Abstract - Module 2
+
+	Use LLM and langchain (or langgraph) to enhance the machine and human readability
+
+	Import from disk (single documentation data set or all / several from file / database)
+
+	V1.1 :
+	Send relevant sections of data set to LLM
+	Beautifiy  main explanatory text section: 
+		field "Technology description including background system"
+		Add: Linebreaks where readability improves, do not change anything in the text (no adding or deleting of context)
+	
+	Control function: check number of characters before and after LLM edit (exclude linebrakes in counting and have 1% tolerance)
+	
+
+	V1.2
+	Send relevant sections of data set to LLM :
+	Abstract  main explanatory text section:
+	Create short abstract of data set (from Technology description including background system and other fields)
+	Maybe add some more fields for beautify (which have typically more than 20 words)
+	
+	V1.3
+	Beatify further and add text highlighting 
+	
+	V1.4
+	Concept how to store the JPG / PNG parts
+
+
+	Export / Save in various formats (JSON, XML : open for suggestions, shall be later readable for LLM)
+	
+	Module 3
+	V1.1
+	Data set viewer (text for debug purpose, different formats ) 
+
+	General notes
+
+	Modul 1/2/3 may share export functionality
+	user interface : input of files via command line (either single file or data base)
+
+	Setup: 
+		directories and files
+		doc : developer info
+		idea : todo
+		dataset: in and output for datasets and webaddresses (or what is a common name for such a directory)
+		core : all sub modules in a meaningfull manner splitted
+		tests: tests
+		scripts: batch files if necessary
+		.env: api to Open AI
+		
+		 	
+

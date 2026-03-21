@@ -38,12 +38,25 @@ def main():
     group.add_argument("--urls", help="Path to file with one URL per line")
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT), help="Output directory")
     parser.add_argument("--cookie", help="Cookie header value for authenticated requests")
+    parser.add_argument("--cookie-file", help="Path to a text file containing the cookie value")
     args = parser.parse_args()
 
     output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    headers = {"Cookie": args.cookie} if args.cookie else None
+    cookie = args.cookie
+    if args.cookie_file:
+        cookie = Path(args.cookie_file).read_text(encoding="utf-8").strip()
+    headers = None
+    if cookie:
+        headers = {
+            "Cookie": cookie,
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/134.0.0.0 Safari/537.36"
+            ),
+        }
 
     urls = [args.url] if args.url else Path(args.urls).read_text().splitlines()
     urls = [u.strip() for u in urls if u.strip()]
