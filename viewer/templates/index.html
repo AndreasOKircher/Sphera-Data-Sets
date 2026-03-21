@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Datasets — Sphera LCA Viewer{% endblock %}
+{% block content %}
+<div style="margin-bottom:16px; display:flex; align-items:center; gap:16px;">
+  <h1 style="font-size:22px;">Datasets</h1>
+  <input id="search" type="text" placeholder="Search by name..." oninput="filterCards()"
+    style="padding:6px 12px; border:1px solid #ccc; border-radius:4px; font-size:14px; width:300px;">
+</div>
+
+{% if not datasets %}
+  <p style="color:#666;">No datasets found in <code>dataset/output/</code>. Run the downloader first.</p>
+{% else %}
+  <div id="cards" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(340px,1fr)); gap:16px;">
+    {% for d in datasets %}
+    <a href="/dataset/{{ d.uuid }}" style="display:block; text-decoration:none; color:inherit;"
+       data-name="{{ (d.name_base or '') | lower }}">
+      <div style="background:#fff; border:1px solid #ddd; border-radius:8px; padding:16px;
+                  box-shadow:0 1px 3px rgba(0,0,0,.06); transition: box-shadow .15s;"
+           onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.12)'"
+           onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,.06)'">
+        <div style="font-weight:bold; font-size:15px; margin-bottom:6px; line-height:1.4;">
+          {{ d.name_base or "—" }}
+        </div>
+        <div style="font-size:12px; color:#666; margin-bottom:10px;">
+          {{ d.classification or "" }}{% if d.classification and d.location %} · {% endif %}
+          {{ d.location or "" }}{% if d.reference_year %} · {{ d.reference_year }}{% endif %}
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          {% if d.dataset_type %}
+            <span class="badge badge-type">{{ d.dataset_type }}</span>
+          {% endif %}
+          {% if d.dqi_overall_quality %}
+            {% set dqi_class = "badge-dqi-very-good" if "very" in (d.dqi_overall_quality | lower) else "badge-dqi-good" if "good" in (d.dqi_overall_quality | lower) else "badge-dqi-other" %}
+            <span class="badge {{ dqi_class }}">DQI: {{ d.dqi_overall_quality }}</span>
+          {% endif %}
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  <p style="margin-top:20px; color:#666; font-size:13px;">{{ datasets | length }} datasets loaded</p>
+{% endif %}
+
+<script>
+function filterCards() {
+  const q = document.getElementById('search').value.toLowerCase();
+  document.querySelectorAll('#cards > a').forEach(card => {
+    card.style.display = card.dataset.name.includes(q) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}
