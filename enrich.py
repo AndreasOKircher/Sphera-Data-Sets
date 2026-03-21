@@ -47,7 +47,7 @@ def _check_api_key() -> str:
 # ---------------------------------------------------------------------------
 
 
-def process_one(uuid: str, client: anthropic.Anthropic, model: str, force: bool) -> None:
+def process_one(uuid: str, client: anthropic.Anthropic, model: str, force: bool, threshold: float = 2.0) -> None:
     dataset_path = OUTPUT_DIR / f"{uuid}.json"
     if not dataset_path.exists():
         print(f"[SKIP] {uuid[:8]} — dataset file not found")
@@ -85,7 +85,7 @@ def process_one(uuid: str, client: anthropic.Anthropic, model: str, force: bool)
         )
         formatted = resp.content[0].text
 
-        counts = verify_counts(tech, formatted)
+        counts = verify_counts(tech, formatted, threshold_pct=threshold)
 
         # Build display values
         w_orig = counts["word_count"]
@@ -101,11 +101,13 @@ def process_one(uuid: str, client: anthropic.Anthropic, model: str, force: bool)
         c_sign = "\u2212" if c_diff < 0 else "+"
 
         if not counts["ok"]:
-            w_flag = "\u2705" if w_pct <= 2.0 else "\u274c"
-            c_flag = "\u2705" if c_pct <= 2.0 else "\u274c"
+            w_flag = "\u2705" if w_pct <= threshold else "\u274c"
+            c_flag = "\u2705" if c_pct <= threshold else "\u274c"
             print(f"[FAIL] {uuid[:8]} — {name}")
             print(f"       Words: {w_orig:,} \u2192 {w_new:,}  ({w_sign}{abs(w_diff)} words, {w_pct:.1f}%) {w_flag}  — not saved")
             print(f"       Chars: {c_orig:,} \u2192 {c_new:,}  ({c_sign}{abs(c_diff)} chars, {c_pct:.1f}%) {c_flag}  — not saved")
+            preview = formatted[:400].replace('\n', ' ')
+            print(f"       Preview: {preview}{'...' if len(formatted) > 400 else ''}")
             return
 
         # Write enriched file
@@ -160,6 +162,12 @@ def main() -> None:
         default=DEFAULT_MODEL,
         help=f"Claude model ID (default: {DEFAULT_MODEL})",
     )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=2.0,
+        help="Max allowed word/char count deviation in %% (default: 2.0)",
+    )
     args = parser.parse_args()
 
     key = _check_api_key()
@@ -167,7 +175,7 @@ def main() -> None:
     ENRICHED_DIR.mkdir(parents=True, exist_ok=True)
 
     if args.uuid:
-        process_one(args.uuid, client, args.model, args.force)
+        process_one(args.uuid, client, args.model, args.force, args.threshold)
     else:  # --all
         if not OUTPUT_DIR.exists():
             print(
@@ -177,7 +185,7 @@ def main() -> None:
             sys.exit(1)
         uuids = [f.stem for f in sorted(OUTPUT_DIR.glob("*.json"))]
         for uuid in uuids:
-            process_one(uuid, client, args.model, args.force)
+            process_one(uuid, client, args.model, args.force, args.threshold)
 
 
 if __name__ == "__main__":
