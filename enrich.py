@@ -15,7 +15,6 @@ from dotenv import load_dotenv
 load_dotenv()  # loads .env before using os.environ
 
 # Local
-sys.path.insert(0, str(Path(__file__).parent))
 from core.enricher import FORMAT_SYSTEM, SUMMARY_SYSTEM, verify_counts
 
 # ---------------------------------------------------------------------------
@@ -51,7 +50,7 @@ def _check_api_key() -> str:
 def process_one(uuid: str, client: anthropic.Anthropic, model: str, force: bool) -> None:
     dataset_path = OUTPUT_DIR / f"{uuid}.json"
     if not dataset_path.exists():
-        print(f"[SKIP] {uuid} — dataset file not found")
+        print(f"[SKIP] {uuid[:8]} — dataset file not found")
         return
 
     data = json.loads(dataset_path.read_text(encoding="utf-8"))
@@ -67,75 +66,73 @@ def process_one(uuid: str, client: anthropic.Anthropic, model: str, force: bool)
         print(f"[SKIP] {uuid[:8]} — no technology_description field")
         return
 
-    # Summary call
-    resp = client.messages.create(
-        model=model,
-        max_tokens=300,
-        system=SUMMARY_SYSTEM,
-        messages=[{"role": "user", "content": tech}],
-    )
-    summary = resp.content[0].text
+    try:
+        # Summary call
+        resp = client.messages.create(
+            model=model,
+            max_tokens=300,
+            system=SUMMARY_SYSTEM,
+            messages=[{"role": "user", "content": tech}],
+        )
+        summary = resp.content[0].text
 
-    # Format call
-    resp = client.messages.create(
-        model=model,
-        max_tokens=16000,
-        system=FORMAT_SYSTEM,
-        messages=[{"role": "user", "content": tech}],
-    )
-    formatted = resp.content[0].text
+        # Format call
+        resp = client.messages.create(
+            model=model,
+            max_tokens=16000,
+            system=FORMAT_SYSTEM,
+            messages=[{"role": "user", "content": tech}],
+        )
+        formatted = resp.content[0].text
 
-    counts = verify_counts(tech, formatted)
+        counts = verify_counts(tech, formatted)
 
-    # Build display values
-    w_orig = counts["word_count"]
-    w_new = counts["formatted_word_count"]
-    w_diff = counts["word_count_diff"]
-    w_pct = counts["word_count_diff_pct"]
-    c_orig = counts["char_count"]
-    c_new = counts["formatted_char_count"]
-    c_diff = counts["char_count_diff"]
-    c_pct = counts["char_count_diff_pct"]
+        # Build display values
+        w_orig = counts["word_count"]
+        w_new = counts["formatted_word_count"]
+        w_diff = counts["word_count_diff"]
+        w_pct = counts["word_count_diff_pct"]
+        c_orig = counts["char_count"]
+        c_new = counts["formatted_char_count"]
+        c_diff = counts["char_count_diff"]
+        c_pct = counts["char_count_diff_pct"]
 
-    w_sign = "\u2212" if w_diff < 0 else "+"
-    c_sign = "\u2212" if c_diff < 0 else "+"
+        w_sign = "\u2212" if w_diff < 0 else "+"
+        c_sign = "\u2212" if c_diff < 0 else "+"
 
-    if not counts["ok"]:
-        w_flag = "\u2705" if w_pct <= 2.0 else "\u274c"
-        c_flag = "\u2705" if c_pct <= 2.0 else "\u274c"
-        print(f"[FAIL] {uuid[:8]} — {name}")
-        print(f"       Words: {w_orig:,} \u2192 {w_new:,}  ({w_sign}{abs(w_diff)} words, {w_pct:.1f}%) {w_flag}  — not saved")
-        print(f"       Chars: {c_orig:,} \u2192 {c_new:,}  ({c_sign}{abs(c_diff)} chars, {c_pct:.1f}%) {c_flag}  — not saved")
+        if not counts["ok"]:
+            w_flag = "\u2705" if w_pct <= 2.0 else "\u274c"
+            c_flag = "\u2705" if c_pct <= 2.0 else "\u274c"
+            print(f"[FAIL] {uuid[:8]} — {name}")
+            print(f"       Words: {w_orig:,} \u2192 {w_new:,}  ({w_sign}{abs(w_diff)} words, {w_pct:.1f}%) {w_flag}  — not saved")
+            print(f"       Chars: {c_orig:,} \u2192 {c_new:,}  ({c_sign}{abs(c_diff)} chars, {c_pct:.1f}%) {c_flag}  — not saved")
+            return
+
+        # Write enriched file
+        enriched = {
+            "uuid": uuid,
+            "enriched_at": datetime.now(tz=timezone.utc).isoformat(),
+            "technology_description_word_count": w_orig,
+            "technology_description_formatted_word_count": w_new,
+            "technology_description_word_count_diff": w_diff,
+            "technology_description_word_count_diff_pct": w_pct,
+            "technology_description_char_count": c_orig,
+            "technology_description_formatted_char_count": c_new,
+            "technology_description_char_count_diff": c_diff,
+            "technology_description_char_count_diff_pct": c_pct,
+            "technology_description_summary": summary,
+            "technology_description_formatted": formatted,
+        }
+        enriched_path.write_text(
+            json.dumps(enriched, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+
+        print(f"[OK]   {uuid[:8]} — {name}")
+        print(f"       Words: {w_orig:,} \u2192 {w_new:,}  ({w_sign}{abs(w_diff)} word{'s' if abs(w_diff) != 1 else ''}, {w_pct:.1f}%) \u2705")
+        print(f"       Chars: {c_orig:,} \u2192 {c_new:,}  ({c_sign}{abs(c_diff)} char{'s' if abs(c_diff) != 1 else ''}, {c_pct:.1f}%) \u2705")
+    except anthropic.APIError as exc:
+        print(f"[FAIL] {uuid[:8]} — API error: {exc}", file=sys.stderr)
         return
-
-    # Write enriched file
-    enriched = {
-        "uuid": uuid,
-        "enriched_at": datetime.now(tz=timezone.utc).isoformat(),
-        "technology_description_word_count": w_orig,
-        "technology_description_formatted_word_count": w_new,
-        "technology_description_word_count_diff": w_diff,
-        "technology_description_word_count_diff_pct": w_pct,
-        "technology_description_char_count": c_orig,
-        "technology_description_formatted_char_count": c_new,
-        "technology_description_char_count_diff": c_diff,
-        "technology_description_char_count_diff_pct": c_pct,
-        "technology_description_summary": summary,
-        "technology_description_formatted": formatted,
-    }
-    enriched_path.write_text(
-        json.dumps(enriched, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
-
-    print(f"[OK]   {uuid[:8]} — {name}")
-    print(
-        f"       Words: {w_orig:,} \u2192 {w_new:,}  "
-        f"({w_sign}{abs(w_diff)} word{'s' if abs(w_diff) != 1 else ''},  {w_pct:.1f}%) \u2705"
-    )
-    print(
-        f"       Chars: {c_orig:,} \u2192 {c_new:,}  "
-        f"({c_sign}{abs(c_diff)} char{'s' if abs(c_diff) != 1 else ''}, {c_pct:.1f}%) \u2705"
-    )
 
 
 # ---------------------------------------------------------------------------
