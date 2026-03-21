@@ -13,6 +13,11 @@ OUTPUT_DIR = Path(__file__).parent.parent / "dataset" / "output"
 app = Flask(__name__)
 
 
+@app.context_processor
+def inject_output_dir():
+    return {"output_dir": str(OUTPUT_DIR)}
+
+
 def load_all() -> list[dict]:
     datasets = []
     if not OUTPUT_DIR.exists():
