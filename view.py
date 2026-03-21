@@ -5,7 +5,7 @@ from pathlib import Path
 
 from viewer.sections import MUST_FIELDS, SECTIONS
 
-OUTPUT_DIR = Path("dataset/output")
+OUTPUT_DIR = Path(__file__).parent / "dataset" / "output"
 SEP = "━" * 50
 FIELD_W = 28   # field name column width
 VALUE_W = 20   # value column width
