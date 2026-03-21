@@ -8,10 +8,20 @@ from flask import Flask, render_template, abort
 
 from viewer.sections import SECTIONS, DEFAULT_OPEN
 
-OUTPUT_DIR = Path(__file__).parent.parent / "dataset" / "output"
-ENRICHED_DIR = Path(__file__).parent.parent / "dataset" / "enriched"
+# When frozen by PyInstaller:
+#   - dataset/ lives next to the .exe  (user data, not bundled)
+#   - templates/ are extracted into sys._MEIPASS by PyInstaller
+if getattr(sys, "frozen", False):
+    _BASE         = Path.cwd()
+    _TEMPLATE_DIR = str(Path(sys._MEIPASS) / "templates")
+else:
+    _BASE         = Path(__file__).parent.parent
+    _TEMPLATE_DIR = None  # Flask default: templates/ sibling to app.py
 
-app = Flask(__name__)
+OUTPUT_DIR   = _BASE / "dataset" / "output"
+ENRICHED_DIR = _BASE / "dataset" / "enriched"
+
+app = Flask(__name__, **({"template_folder": _TEMPLATE_DIR} if _TEMPLATE_DIR else {}))
 
 
 @app.context_processor
@@ -73,10 +83,32 @@ def dataset_detail(uuid):
     )
 
 
+@app.route("/shutdown", methods=["POST"])
+def shutdown():
+    import os
+    os._exit(0)
+
+
 @app.errorhandler(404)
 def not_found(e):
     return render_template("404.html"), 404
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    import threading
+    import webbrowser
+
+    def _open_browser():
+        webbrowser.open("http://localhost:5000")
+
+    print("=" * 48)
+    print("  Sphera LCA Viewer")
+    print("  http://localhost:5000")
+    print("  Press Ctrl+C to stop.")
+    print("=" * 48)
+
+    # Open browser after Flask has had time to start
+    threading.Timer(1.5, _open_browser).start()
+
+    # debug=False is required when running as a PyInstaller bundle
+    app.run(debug=False, port=5000)

@@ -3,10 +3,22 @@ import json
 import sys
 from pathlib import Path
 
+# Ensure UTF-8 output on Windows terminals (box-drawing characters etc.)
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 from viewer.sections import MUST_FIELDS, SECTIONS
 
-OUTPUT_DIR = Path(__file__).parent / "dataset" / "output"
-ENRICHED_DIR = Path(__file__).parent / "dataset" / "enriched"
+# When frozen by PyInstaller, dataset/ lives next to the .exe, not inside the bundle.
+if getattr(sys, "frozen", False):
+    _BASE = Path.cwd()
+else:
+    _BASE = Path(__file__).parent
+
+OUTPUT_DIR   = _BASE / "dataset" / "output"
+ENRICHED_DIR = _BASE / "dataset" / "enriched"
 SEP = "━" * 50
 FIELD_W = 28   # field name column width
 VALUE_W = 20   # value column width

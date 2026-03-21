@@ -62,24 +62,24 @@ Sphera-Data-Sets/
 ├── scripts/              # batch scripts if needed
 ├── .env                  # API keys (OpenAI, for Module 2)
 ├── requirements.txt
-└── main.py               # CLI entry point
+└── download.py               # CLI entry point
 ```
 
 ---
 
 ## CLI Interface
 
-Single entry point: `main.py`
+Single entry point: `download.py`
 
 ```bash
 # Single URL
-python main.py --url https://lcadatabase.sphera.com/2026/xml-data/processes/<uuid>.xml
+python download.py --url https://lcadatabase.sphera.com/2026/xml-data/processes/<uuid>.xml
 
 # Batch from file (one URL per line)
-python main.py --urls dataset/input/my_urls.txt
+python download.py --urls dataset/input/my_urls.txt
 
 # With custom output directory
-python main.py --urls dataset/input/my_urls.txt --output dataset/output/
+python download.py --urls dataset/input/my_urls.txt --output dataset/output/
 ```
 
 **Rules:**

@@ -24,6 +24,16 @@ cookie.txt
 .claude/
 .superpowers/
 
+# --- Build artifacts ---
+dist/
+build/sphera-*/
+*.spec
+*.exe
+
+# --- Runtime data ---
+dataset/Web/
+dataset/dedup/
+
 # --- Scratch / source material ---
 tmp/
 ressources/
