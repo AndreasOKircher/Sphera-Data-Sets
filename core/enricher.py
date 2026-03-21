@@ -3,7 +3,21 @@
 No external dependencies — standard library only.
 """
 
+from typing import TypedDict
+
 _STRIP_CHARS = str.maketrans("", "", "#*_`\n\r")
+
+
+class CountsResult(TypedDict):
+    word_count: int
+    formatted_word_count: int
+    word_count_diff: int
+    word_count_diff_pct: float
+    char_count: int
+    formatted_char_count: int
+    char_count_diff: int
+    char_count_diff_pct: float
+    ok: bool
 
 
 def clean_text(text: str) -> str:
@@ -30,7 +44,7 @@ def verify_counts(
     original: str,
     formatted: str,
     threshold_pct: float = 2.0,
-) -> dict:
+) -> CountsResult:
     """Compare word and character counts between *original* and *formatted* text.
 
     Parameters
