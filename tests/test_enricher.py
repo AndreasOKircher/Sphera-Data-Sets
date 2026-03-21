@@ -27,6 +27,9 @@ class TestCleanText:
     def test_strips_carriage_return(self):
         assert "\r" not in clean_text("line one\r\nline two")
 
+    def test_newline_replaced_with_space(self):
+        assert clean_text("word1\nword2") == "word1 word2"
+
     def test_preserves_spaces(self):
         assert clean_text("hello world") == "hello world"
 
@@ -76,9 +79,12 @@ class TestCountWords:
         # "## ** __" → clean → "  " (spaces only) → 0 tokens
         assert count_words("## **") == 0
 
-    def test_newlines_stripped_joining_adjacent_words(self):
-        # \n is stripped (not replaced with space), so "word1\nword2" → "word1word2" = 1 token
-        assert count_words("word1\nword2\nword3") == 1
+    def test_newlines_replaced_preserving_word_boundaries(self):
+        # \n is replaced with space, so "word1\nword2\nword3" → "word1 word2 word3" = 3 tokens
+        assert count_words("word1\nword2\nword3") == 3
+
+    def test_newline_word_boundary(self):
+        assert count_words("word1\nword2") == 2
 
     def test_newlines_with_surrounding_spaces_still_separate_words(self):
         # when words have spaces around the newline they remain separate after stripping

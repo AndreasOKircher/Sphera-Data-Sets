@@ -5,7 +5,7 @@ No external dependencies — standard library only.
 
 from typing import TypedDict
 
-_STRIP_CHARS = str.maketrans("", "", "#*_`\n\r")
+_STRIP_CHARS = str.maketrans("", "", "#*_`")
 
 
 class CountsResult(TypedDict):
@@ -23,10 +23,12 @@ class CountsResult(TypedDict):
 def clean_text(text: str) -> str:
     """Strip formatting characters from *text* and return the result.
 
-    Characters removed: ``#``, ``*``, ``_``, backtick, ``\\n``, ``\\r``.
-    All other characters (spaces, punctuation, alphanumeric, Unicode) are
-    preserved exactly as-is.
+    Newlines (``\\n``, ``\\r``) are replaced with a space to preserve word
+    boundaries.  Pure formatting markers (``#``, ``*``, ``_``, backtick) are
+    removed entirely.  All other characters (spaces, punctuation, alphanumeric,
+    Unicode) are preserved exactly as-is.
     """
+    text = text.replace('\n', ' ').replace('\r', ' ')
     return text.translate(_STRIP_CHARS)
 
 
