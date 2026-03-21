@@ -1,5 +1,6 @@
 dataset/output/
-dataset/input/
+dataset/input/*
+!dataset/input/*.txt
 __pycache__/
 .pytest_cache/
 *.pyc
