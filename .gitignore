@@ -20,6 +20,7 @@ cookie.txt
 # --- IDE / tooling ---
 .vscode/
 .claude/
+.superpowers/
 
 # --- Scratch / source material ---
 tmp/
