@@ -9,6 +9,8 @@
 # --- Dataset files ---
 # Output: entire directory excluded (downloaded XML/JSON, fail reports)
 dataset/output/
+# Enriched: sidecar JSON files from Module 4 LLM enrichment
+dataset/enriched/
 # Input: exclude everything except .txt URL lists
 dataset/input/*
 !dataset/input/*.txt
