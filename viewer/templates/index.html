@@ -137,6 +137,7 @@ function setView(v) {
 
 function filterAll() {
   const q = document.getElementById('search').value.toLowerCase();
+  sessionStorage.setItem('search', q);
   let visible = 0;
   document.querySelectorAll('#view-cards > a').forEach(el => {
     const show = el.dataset.name.includes(q);
@@ -150,5 +151,14 @@ function filterAll() {
   const label = document.getElementById('count-label');
   if (label) label.textContent = q ? `${visible} of ${total} datasets` : `${total} datasets loaded`;
 }
+
+// Restore search term on back-navigation
+(function() {
+  const saved = sessionStorage.getItem('search') || '';
+  if (saved) {
+    document.getElementById('search').value = saved;
+    filterAll();
+  }
+})();
 </script>
 {% endblock %}

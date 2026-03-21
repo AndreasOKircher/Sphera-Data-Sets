@@ -105,10 +105,16 @@ def verify_counts(
 
 
 SUMMARY_SYSTEM = (
-    "You are a technical writer specializing in Life Cycle Assessment (LCA). Write a "
-    "3-5 sentence plain-language summary of the following technology description. Focus "
-    "on what the process is, what it produces, and its key characteristics. Do not add "
-    "any information not present in the original text."
+    "You are a technical writer specializing in Life Cycle Assessment (LCA). "
+    "Write a concise structured summary of the following technology description using exactly this markdown format:\n\n"
+    "**Process:** One sentence describing what the process or product is.\n"
+    "**Output:** One sentence on what it produces or its function.\n"
+    "**Key characteristics:**\n"
+    "- Key technical feature or scope\n"
+    "- Data quality, coverage, or methodology note (only if mentioned)\n"
+    "- Geographic or temporal scope (only if mentioned)\n\n"
+    "Use only information present in the original text. "
+    "Omit any bullet point if the information is not mentioned in the original."
 )
 
 FORMAT_SYSTEM = (
