@@ -6,6 +6,7 @@ from pathlib import Path
 from viewer.sections import MUST_FIELDS, SECTIONS
 
 OUTPUT_DIR = Path(__file__).parent / "dataset" / "output"
+ENRICHED_DIR = Path(__file__).parent / "dataset" / "enriched"
 SEP = "━" * 50
 FIELD_W = 28   # field name column width
 VALUE_W = 20   # value column width
@@ -46,6 +47,18 @@ def load_one(uuid: str) -> dict | None:
     except Exception as e:
         print(f"[WARN] could not read {path.name}: {e}", file=sys.stderr)
         return None
+
+
+def load_enriched_one(uuid: str) -> dict:
+    """Load enriched sidecar JSON for a dataset. Returns empty dict if not found."""
+    path = ENRICHED_DIR / f"{uuid}.json"
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception as e:
+        print(f"[WARN] could not read enriched {path.name}: {e}", file=sys.stderr)
+        return {}
 
 
 def list_datasets() -> None:
@@ -89,6 +102,27 @@ def print_header(data: dict) -> None:
     print(SEP)
 
 
+def print_summary_block(enriched: dict) -> None:
+    """Print the LLM enrichment summary block if present."""
+    summary = enriched.get("technology_description_summary")
+    if not summary:
+        return
+    print(SEP)
+    print(" SUMMARY")
+    # Word-wrap the summary at ~70 chars
+    words = summary.split()
+    line = " "
+    for word in words:
+        if len(line) + len(word) + 1 > 70:
+            print(line)
+            line = " " + word
+        else:
+            line = line + (" " if line.strip() else "") + word
+    if line.strip():
+        print(line)
+    print(SEP)
+
+
 def print_sections(data: dict, full: bool = False) -> None:
     """Print all field sections below the header."""
     for section_name, fields in SECTIONS:
@@ -114,6 +148,8 @@ def inspect_dataset(uuid: str, full: bool = False) -> None:
         list_datasets()
         return
     print_header(data)
+    enriched = load_enriched_one(uuid)
+    print_summary_block(enriched)
     print_sections(data, full=full)
 
 
