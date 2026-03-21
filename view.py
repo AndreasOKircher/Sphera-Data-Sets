@@ -104,22 +104,22 @@ def print_header(data: dict) -> None:
 
 def print_summary_block(enriched: dict) -> None:
     """Print the LLM enrichment summary block if present."""
-    summary = enriched.get("technology_description_summary")
+    summary = (enriched.get("technology_description_summary") or "").strip()
     if not summary:
         return
     print(SEP)
     print(" SUMMARY")
     # Word-wrap the summary at ~70 chars
     words = summary.split()
-    line = " "
+    line = ""
     for word in words:
-        if len(line) + len(word) + 1 > 70:
-            print(line)
-            line = " " + word
+        if line and len(line) + 1 + len(word) > 70:
+            print(" " + line)
+            line = word
         else:
-            line = line + (" " if line.strip() else "") + word
-    if line.strip():
-        print(line)
+            line = (line + " " + word) if line else word
+    if line:
+        print(" " + line)
     print(SEP)
 
 
