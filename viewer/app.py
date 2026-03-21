@@ -6,7 +6,7 @@ from flask import Flask, render_template, abort
 
 from viewer.sections import SECTIONS, DEFAULT_OPEN
 
-OUTPUT_DIR = Path(__file__).parent.parent / "dataset/output"
+OUTPUT_DIR = Path(__file__).parent.parent / "dataset" / "output"
 
 app = Flask(__name__)
 
