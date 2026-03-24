@@ -257,3 +257,31 @@ def test_query_route_success(flask_client):
     assert "results" in data
     assert len(data["results"]) == 1
     assert data["results"][0]["uuid"] == "aaa-111"
+
+
+# ---------------------------------------------------------------------------
+# build_prompt with fields parameter
+# ---------------------------------------------------------------------------
+
+def test_build_prompt_includes_classification_by_default():
+    result = build_prompt("test", [DATASET_A])
+    assert "Metal" in result  # classification
+
+def test_build_prompt_includes_location_by_default():
+    result = build_prompt("test", [DATASET_A])
+    assert "DE" in result  # location
+
+def test_build_prompt_excludes_classification_when_not_in_fields():
+    result = build_prompt("test", [DATASET_A], fields=["location", "year", "description"])
+    assert "Metal" not in result
+    assert "DE" in result
+
+def test_build_prompt_excludes_location_when_not_in_fields():
+    result = build_prompt("test", [DATASET_A], fields=["classification", "year", "description"])
+    assert "DE" not in result
+    assert "Metal" in result
+
+def test_build_prompt_includes_synonyms_when_requested():
+    d = {**DATASET_A, "synonyms": "flat-rolled steel; HR steel"}
+    result = build_prompt("test", [d], fields=["description", "synonyms"])
+    assert "flat-rolled steel" in result

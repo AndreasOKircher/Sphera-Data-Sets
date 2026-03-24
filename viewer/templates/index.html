@@ -176,9 +176,32 @@ function toggleSearchFields(e) {
   const p = document.getElementById('search-fields-panel');
   p.style.display = p.style.display === 'none' ? '' : 'none';
 }
+
+function toggleQueryFields(e) {
+  e.stopPropagation();
+  const p = document.getElementById('query-fields-panel');
+  p.style.display = p.style.display === 'none' ? '' : 'none';
+}
+
+function _selectedQueryFields() {
+  const map = {
+    'qf-description':    'description',
+    'qf-classification': 'classification',
+    'qf-location':       'location',
+    'qf-year':           'year',
+    'qf-synonyms':       'synonyms',
+    'qf-type':           'dataset_type',
+  };
+  return Object.entries(map)
+    .filter(([id]) => document.getElementById(id)?.checked)
+    .map(([, val]) => val);
+}
+
 document.addEventListener('click', () => {
-  const p = document.getElementById('search-fields-panel');
-  if (p) p.style.display = 'none';
+  const p1 = document.getElementById('search-fields-panel');
+  if (p1) p1.style.display = 'none';
+  const p2 = document.getElementById('query-fields-panel');
+  if (p2) p2.style.display = 'none';
 });
 
 function _kwSearchText(el) {
@@ -313,7 +336,7 @@ async function submitQuery() {
     const resp = await fetch('/query', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, uuids: [...selectedUUIDs] }),
+      body: JSON.stringify({ question, uuids: [...selectedUUIDs], fields: _selectedQueryFields() }),
     });
     const data = await resp.json();
     if (!resp.ok || data.error) {
@@ -393,6 +416,25 @@ function updateSelectionUI() {
            border:1px solid rgba(255,255,255,.3); background:rgba(255,255,255,.1);
            color:#fff; font-size:14px;"
     onkeydown="if(event.key==='Enter') submitQuery()">
+  <div style="position:relative; display:inline-block;">
+    <button id="query-fields-btn" onclick="toggleQueryFields(event)"
+      style="padding:6px 10px; border:1px solid rgba(255,255,255,.3); border-radius:4px;
+             background:rgba(255,255,255,.1); color:#fff; cursor:pointer; font-size:13px;"
+      title="Choose dataset fields to include in the query">
+      ⚙ Fields
+    </button>
+    <div id="query-fields-panel" style="display:none; position:absolute; bottom:40px; right:0;
+         background:#fff; color:#222; border:1px solid #ccc; border-radius:6px; padding:10px 14px;
+         box-shadow:0 -4px 12px rgba(0,0,0,.15); z-index:150; min-width:200px; font-size:13px;">
+      <div style="font-weight:bold; margin-bottom:8px; font-size:12px; color:#666;">Include in LLM prompt:</div>
+      <label style="display:block; margin-bottom:6px;"><input type="checkbox" id="qf-description" checked> Description / summary</label>
+      <label style="display:block; margin-bottom:6px;"><input type="checkbox" id="qf-classification" checked> Classification</label>
+      <label style="display:block; margin-bottom:6px;"><input type="checkbox" id="qf-location" checked> Location</label>
+      <label style="display:block; margin-bottom:6px;"><input type="checkbox" id="qf-year" checked> Reference year</label>
+      <label style="display:block; margin-bottom:6px;"><input type="checkbox" id="qf-synonyms"> Synonyms</label>
+      <label style="display:block;"><input type="checkbox" id="qf-type"> Dataset type</label>
+    </div>
+  </div>
   <button onclick="submitQuery()"
     style="padding:6px 16px; border:none; border-radius:4px;
            background:#0057b8; color:#fff; cursor:pointer; font-size:14px; font-weight:bold;">
