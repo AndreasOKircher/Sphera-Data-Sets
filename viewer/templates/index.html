@@ -20,6 +20,28 @@
 {% if not datasets %}
   <p style="color:#666;">No datasets found in <code>dataset/output/</code>. Run the downloader first.</p>
 {% else %}
+  <div id="results-panel" style="display:none; margin-bottom:20px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <h2 style="font-size:16px; font-weight:bold;" id="results-question-label"></h2>
+      <button onclick="dismissResults()"
+        style="padding:3px 10px; font-size:12px; border:1px solid #ccc; border-radius:4px;
+               background:#fff; cursor:pointer;">✕ Dismiss</button>
+    </div>
+    <div id="results-error" style="color:#c00; font-size:14px; display:none;"></div>
+    <table id="results-table" style="width:100%; border-collapse:collapse; background:#fff;
+      border:1px solid #ddd; border-radius:8px; overflow:hidden; font-size:13px; display:none;">
+      <thead>
+        <tr style="background:#f0f4ff; font-weight:bold; text-align:left;">
+          <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:50px;">Rank</th>
+          <th style="padding:10px 12px; border-bottom:1px solid #ddd;">Dataset</th>
+          <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:65px; text-align:center;">Score</th>
+          <th style="padding:10px 12px; border-bottom:1px solid #ddd;">Comment</th>
+        </tr>
+      </thead>
+      <tbody id="results-tbody"></tbody>
+    </table>
+  </div>
+
   <!-- Card view -->
   <div id="view-cards" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(340px,1fr)); gap:16px;">
     {% for d in datasets %}
@@ -217,6 +239,77 @@ function toggleSelectAllVisible(checked) {
     if (cardCb) cardCb.checked = checked;
   });
   updateSelectionUI();
+}
+
+async function submitQuery() {
+  const question = document.getElementById('query-question').value.trim();
+  if (!question) { alert('Enter a question first.'); return; }
+  if (selectedUUIDs.size === 0) { alert('Select at least one dataset.'); return; }
+
+  const btn = document.querySelector('#selection-panel button:last-child');
+  btn.textContent = '⏳ Asking…';
+  btn.disabled = true;
+
+  const panel = document.getElementById('results-panel');
+  const errorEl = document.getElementById('results-error');
+  const tableEl = document.getElementById('results-table');
+  const tbody = document.getElementById('results-tbody');
+  const label = document.getElementById('results-question-label');
+
+  label.textContent = `Q: ${question}`;
+  errorEl.style.display = 'none';
+  tableEl.style.display = 'none';
+  tbody.innerHTML = '';
+  panel.style.display = 'block';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  try {
+    const resp = await fetch('/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, uuids: [...selectedUUIDs] }),
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) {
+      errorEl.textContent = data.error || `Server error ${resp.status}`;
+      errorEl.style.display = '';
+    } else if (!data.results || data.results.length === 0) {
+      errorEl.textContent = 'The LLM returned no ranked results. Try rephrasing the question.';
+      errorEl.style.display = '';
+    } else {
+      data.results.forEach(r => {
+        const score = Number(r.relevance_score) || 0;
+        const scoreColor = score >= 4 ? '#065f46' : score >= 2 ? '#92400e' : '#6b7280';
+        const scoreBg   = score >= 4 ? '#d1fae5' : score >= 2 ? '#fef3c7' : '#e5e7eb';
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #f0f0f0';
+        tr.innerHTML = `
+          <td style="padding:8px 12px; text-align:center; font-weight:bold;">${r.rank ?? '—'}</td>
+          <td style="padding:8px 12px;">
+            <a href="/dataset/${r.uuid}" style="color:#0057b8; font-weight:bold;">${r.name || r.uuid}</a>
+          </td>
+          <td style="padding:8px 12px; text-align:center;">
+            <span style="display:inline-block; padding:2px 8px; border-radius:4px;
+                         background:${scoreBg}; color:${scoreColor}; font-weight:bold; font-size:12px;">
+              ${score}/5
+            </span>
+          </td>
+          <td style="padding:8px 12px; color:#444;">${r.comment || ''}</td>`;
+        tbody.appendChild(tr);
+      });
+      tableEl.style.display = '';
+    }
+  } catch (err) {
+    errorEl.textContent = `Request failed: ${err.message}`;
+    errorEl.style.display = '';
+  } finally {
+    btn.textContent = 'Ask LLM';
+    btn.disabled = false;
+  }
+}
+
+function dismissResults() {
+  document.getElementById('results-panel').style.display = 'none';
 }
 
 function updateSelectionUI() {
