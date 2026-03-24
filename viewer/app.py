@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from flask import Flask, render_template, abort
+from flask import Flask, render_template, abort, request, jsonify
 
 import os
 from dotenv import load_dotenv
@@ -90,6 +90,35 @@ def dataset_detail(uuid):
         default_open=DEFAULT_OPEN,
         enriched=load_enriched(uuid),
     )
+
+
+@app.route("/query", methods=["POST"])
+def query():
+    from viewer.query import run_query
+    body = request.get_json(silent=True) or {}
+    question = body.get("question", "").strip()
+    uuids = body.get("uuids")
+
+    if not question:
+        return jsonify({"error": "question is required"}), 400
+    if not uuids:
+        return jsonify({"error": "uuids is required"}), 400
+
+    api_key = app.config.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return jsonify({"error": "ANTHROPIC_API_KEY not configured"}), 503
+
+    all_datasets = load_all()
+    uuid_set = set(uuids)
+    selected = [d for d in all_datasets if d.get("uuid") in uuid_set]
+    if not selected:
+        return jsonify({"error": "No matching datasets found for provided uuids"}), 400
+
+    model = body.get("model", app.config.get("QUERY_MODEL", "claude-haiku-4-5"))
+    fields = body.get("fields", None)
+
+    results = run_query(question, selected, api_key=api_key, model=model, fields=fields)
+    return jsonify({"results": results})
 
 
 @app.route("/shutdown", methods=["POST"])
