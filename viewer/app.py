@@ -6,6 +6,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from flask import Flask, render_template, abort
 
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
 from viewer.sections import SECTIONS, DEFAULT_OPEN
 
 # When frozen by PyInstaller:
@@ -23,6 +27,8 @@ ENRICHED_DIR = _BASE / "dataset" / "enriched"
 
 app = Flask(__name__, **({"template_folder": _TEMPLATE_DIR} if _TEMPLATE_DIR else {}))
 
+app.config["ANTHROPIC_API_KEY"] = os.environ.get("ANTHROPIC_API_KEY", "")
+
 
 @app.context_processor
 def inject_output_dir():
@@ -35,7 +41,10 @@ def load_all() -> list[dict]:
         return datasets
     for f in sorted(OUTPUT_DIR.glob("*.json")):
         try:
-            datasets.append(json.loads(f.read_text(encoding="utf-8")))
+            d = json.loads(f.read_text(encoding="utf-8"))
+            enriched = load_enriched(d.get("uuid", ""))
+            d["_summary"] = enriched.get("technology_description_summary", "")
+            datasets.append(d)
         except Exception as e:
             print(f"[WARN] skipping {f.name}: {e}", file=sys.stderr)
     return datasets
