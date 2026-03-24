@@ -7,6 +7,23 @@
     style="padding:6px 12px; border:1px solid #ccc; border-radius:4px; font-size:14px; width:300px;">
   <input id="search-kw" type="text" placeholder="Keyword / synonym search…" oninput="filterAll()"
     style="padding:6px 12px; border:1px solid #ccc; border-radius:4px; font-size:14px; width:280px;">
+  <div style="position:relative; display:inline-block;">
+    <button id="search-fields-btn" onclick="toggleSearchFields(event)"
+      style="padding:6px 10px; border:1px solid #ccc; border-radius:4px;
+             background:#fff; cursor:pointer; font-size:13px;" title="Choose fields to search">
+      ⚙ Fields
+    </button>
+    <div id="search-fields-panel" style="display:none; position:absolute; top:36px; left:0;
+         background:#fff; border:1px solid #ccc; border-radius:6px; padding:10px 14px;
+         box-shadow:0 4px 12px rgba(0,0,0,.12); z-index:50; min-width:180px; font-size:13px;">
+      <label style="display:block; margin-bottom:6px;"><input type="checkbox" id="sf-synonyms" checked onchange="filterAll()"> Synonyms</label>
+      <label style="display:block; margin-bottom:6px;"><input type="checkbox" id="sf-summary" checked onchange="filterAll()"> Summary</label>
+      <label style="display:block; margin-bottom:6px;"><input type="checkbox" id="sf-classification" onchange="filterAll()"> Classification</label>
+      <label style="display:block; margin-bottom:6px;"><input type="checkbox" id="sf-location" onchange="filterAll()"> Location</label>
+      <label style="display:block; margin-bottom:6px;"><input type="checkbox" id="sf-type" onchange="filterAll()"> Dataset type</label>
+      <label style="display:block;"><input type="checkbox" id="sf-year" onchange="filterAll()"> Reference year</label>
+    </div>
+  </div>
   <div style="margin-left:auto; display:flex; gap:0;">
     <button id="btn-cards" onclick="setView('cards')"
       style="padding:5px 14px; border:1px solid #ccc; border-radius:4px 0 0 4px;
@@ -49,7 +66,11 @@
        data-name="{{ (d.name_base or '') | lower }}"
        data-synonyms="{{ (d.synonyms or '') | lower }}"
        data-summary="{{ (d._summary or '') | lower }}"
-       data-uuid="{{ d.uuid }}">
+       data-uuid="{{ d.uuid }}"
+       data-classification="{{ (d.classification or '') | lower }}"
+       data-location="{{ (d.location or '') | lower }}"
+       data-type="{{ (d.dataset_type or '') | lower }}"
+       data-year="{{ (d.reference_year or '') | lower }}">
       <div id="card-{{ d.uuid }}" style="background:#fff; border:1px solid #ddd; border-radius:8px; padding:16px;
                   box-shadow:0 1px 3px rgba(0,0,0,.06); transition: box-shadow .15s; position:relative;"
            onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.12)'"
@@ -106,6 +127,10 @@
             data-synonyms="{{ (d.synonyms or '') | lower }}"
             data-summary="{{ (d._summary or '') | lower }}"
             data-uuid="{{ d.uuid }}"
+            data-classification="{{ (d.classification or '') | lower }}"
+            data-location="{{ (d.location or '') | lower }}"
+            data-type="{{ (d.dataset_type or '') | lower }}"
+            data-year="{{ (d.reference_year or '') | lower }}"
             onmouseover="this.style.background='#f5f8ff'" onmouseout="this.style.background=''">
           <td style="padding:8px 12px;" onclick="event.stopPropagation()">
             <input type="checkbox" data-uuid="{{ d.uuid }}"
@@ -146,6 +171,27 @@ let currentView = 'cards';
 let sortCol = -1;
 let sortAsc = true;
 
+function toggleSearchFields(e) {
+  e.stopPropagation();
+  const p = document.getElementById('search-fields-panel');
+  p.style.display = p.style.display === 'none' ? '' : 'none';
+}
+document.addEventListener('click', () => {
+  const p = document.getElementById('search-fields-panel');
+  if (p) p.style.display = 'none';
+});
+
+function _kwSearchText(el) {
+  const parts = [];
+  if (document.getElementById('sf-synonyms')?.checked)      parts.push(el.dataset.synonyms || '');
+  if (document.getElementById('sf-summary')?.checked)        parts.push(el.dataset.summary || '');
+  if (document.getElementById('sf-classification')?.checked) parts.push(el.dataset.classification || '');
+  if (document.getElementById('sf-location')?.checked)       parts.push(el.dataset.location || '');
+  if (document.getElementById('sf-type')?.checked)           parts.push(el.dataset.type || '');
+  if (document.getElementById('sf-year')?.checked)           parts.push(el.dataset.year || '');
+  return parts.join(' ');
+}
+
 function sortTable(colIdx, isNumeric) {
   const tbody = document.querySelector('#view-list tbody');
   const rows = [...tbody.querySelectorAll('tr')];
@@ -185,14 +231,14 @@ function filterAll() {
   let visible = 0;
   document.querySelectorAll('#view-cards > a').forEach(el => {
     const matchTitle = !q1 || el.dataset.name.includes(q1);
-    const matchKw    = !q2 || (el.dataset.synonyms || '').includes(q2) || (el.dataset.summary || '').includes(q2);
+    const matchKw    = !q2 || _kwSearchText(el).includes(q2);
     const show = matchTitle && matchKw;
     el.style.display = show ? '' : 'none';
     if (show) visible++;
   });
   document.querySelectorAll('#view-list tbody tr').forEach(el => {
     const matchTitle = !q1 || (el.dataset.name || '').includes(q1);
-    const matchKw    = !q2 || (el.dataset.synonyms || '').includes(q2) || (el.dataset.summary || '').includes(q2);
+    const matchKw    = !q2 || _kwSearchText(el).includes(q2);
     el.style.display = (matchTitle && matchKw) ? '' : 'none';
   });
   const total = {{ datasets | length }};
