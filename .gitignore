@@ -24,6 +24,9 @@ cookie.txt
 .claude/
 .superpowers/
 
+# --- Git worktrees ---
+.worktrees/
+
 # --- Build artifacts ---
 dist/
 build/sphera-*/
