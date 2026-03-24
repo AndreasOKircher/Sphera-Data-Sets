@@ -115,7 +115,7 @@ def query():
         return jsonify({"error": "No matching datasets found for provided uuids"}), 400
 
     model = body.get("model", app.config.get("QUERY_MODEL", "claude-haiku-4-5"))
-    fields = body.get("fields", None)
+    fields = body.get("fields") or None
 
     try:
         results = run_query(question, selected, api_key=api_key, model=model, fields=fields)
