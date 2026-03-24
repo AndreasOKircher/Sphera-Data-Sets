@@ -235,14 +235,17 @@ def test_query_route_no_matching_datasets(flask_client):
 
 def test_query_route_no_api_key(monkeypatch):
     import viewer.app as app_mod
+    original_key = app_mod.app.config.get("ANTHROPIC_API_KEY", "")
     app_mod.app.config["ANTHROPIC_API_KEY"] = ""
     app_mod.app.config["TESTING"] = True
-    with app_mod.app.test_client() as c:
-        resp = c.post("/query",
-            json={"question": "test", "uuids": ["aaa-111"]},
-            content_type="application/json")
-    assert resp.status_code == 503
-    app_mod.app.config["ANTHROPIC_API_KEY"] = "fake-key"  # restore
+    try:
+        with app_mod.app.test_client() as c:
+            resp = c.post("/query",
+                json={"question": "test", "uuids": ["aaa-111"]},
+                content_type="application/json")
+        assert resp.status_code == 503
+    finally:
+        app_mod.app.config["ANTHROPIC_API_KEY"] = original_key
 
 
 def test_query_route_success(flask_client):

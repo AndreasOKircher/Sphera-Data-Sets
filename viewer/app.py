@@ -117,8 +117,11 @@ def query():
     model = body.get("model", app.config.get("QUERY_MODEL", "claude-haiku-4-5"))
     fields = body.get("fields", None)
 
-    results = run_query(question, selected, api_key=api_key, model=model, fields=fields)
-    return jsonify({"results": results})
+    try:
+        results = run_query(question, selected, api_key=api_key, model=model, fields=fields)
+        return jsonify({"results": results})
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
 
 @app.route("/shutdown", methods=["POST"])
