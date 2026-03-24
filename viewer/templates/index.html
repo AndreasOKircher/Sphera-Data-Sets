@@ -5,6 +5,8 @@
   <h1 style="font-size:22px;">Datasets</h1>
   <input id="search" type="text" placeholder="Search by name..." oninput="filterAll()"
     style="padding:6px 12px; border:1px solid #ccc; border-radius:4px; font-size:14px; width:300px;">
+  <input id="search-kw" type="text" placeholder="Keyword / synonym search…" oninput="filterAll()"
+    style="padding:6px 12px; border:1px solid #ccc; border-radius:4px; font-size:14px; width:280px;">
   <div style="margin-left:auto; display:flex; gap:0;">
     <button id="btn-cards" onclick="setView('cards')"
       style="padding:5px 14px; border:1px solid #ccc; border-radius:4px 0 0 4px;
@@ -22,7 +24,9 @@
   <div id="view-cards" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(340px,1fr)); gap:16px;">
     {% for d in datasets %}
     <a href="/dataset/{{ d.uuid }}" style="display:block; text-decoration:none; color:inherit;"
-       data-name="{{ (d.name_base or '') | lower }}">
+       data-name="{{ (d.name_base or '') | lower }}"
+       data-synonyms="{{ (d.synonyms or '') | lower }}"
+       data-summary="{{ (d._summary or '') | lower }}">
       <div style="background:#fff; border:1px solid #ddd; border-radius:8px; padding:16px;
                   box-shadow:0 1px 3px rgba(0,0,0,.06); transition: box-shadow .15s;"
            onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.12)'"
@@ -69,6 +73,8 @@
         {% for d in datasets %}
         <tr onclick="window.location='/dataset/{{ d.uuid }}'" style="cursor:pointer; border-bottom:1px solid #f0f0f0;"
             data-name="{{ (d.name_base or '') | lower }}"
+            data-synonyms="{{ (d.synonyms or '') | lower }}"
+            data-summary="{{ (d._summary or '') | lower }}"
             onmouseover="this.style.background='#f5f8ff'" onmouseout="this.style.background=''">
           <td style="padding:8px 12px;">{{ d.name_base or "—" }}</td>
           <td style="padding:8px 12px;">{{ d.location or "—" }}</td>
@@ -136,29 +142,38 @@ function setView(v) {
 }
 
 function filterAll() {
-  const q = document.getElementById('search').value.toLowerCase();
-  sessionStorage.setItem('search', q);
+  const q1 = document.getElementById('search').value.toLowerCase();
+  const q2 = document.getElementById('search-kw').value.toLowerCase();
+  sessionStorage.setItem('search', q1);
+  sessionStorage.setItem('search-kw', q2);
   let visible = 0;
   document.querySelectorAll('#view-cards > a').forEach(el => {
-    const show = el.dataset.name.includes(q);
+    const matchTitle = !q1 || el.dataset.name.includes(q1);
+    const matchKw    = !q2 || (el.dataset.synonyms || '').includes(q2) || (el.dataset.summary || '').includes(q2);
+    const show = matchTitle && matchKw;
     el.style.display = show ? '' : 'none';
     if (show) visible++;
   });
   document.querySelectorAll('#view-list tbody tr').forEach(el => {
-    el.style.display = el.dataset.name.includes(q) ? '' : 'none';
+    const matchTitle = !q1 || (el.dataset.name || '').includes(q1);
+    const matchKw    = !q2 || (el.dataset.synonyms || '').includes(q2) || (el.dataset.summary || '').includes(q2);
+    el.style.display = (matchTitle && matchKw) ? '' : 'none';
   });
   const total = {{ datasets | length }};
   const label = document.getElementById('count-label');
-  if (label) label.textContent = q ? `${visible} of ${total} datasets` : `${total} datasets loaded`;
+  if (label) {
+    const active = q1 || q2;
+    label.textContent = active ? `${visible} of ${total} datasets` : `${total} datasets loaded`;
+  }
 }
 
 // Restore search term on back-navigation
 (function() {
-  const saved = sessionStorage.getItem('search') || '';
-  if (saved) {
-    document.getElementById('search').value = saved;
-    filterAll();
-  }
+  const saved1 = sessionStorage.getItem('search') || '';
+  const saved2 = sessionStorage.getItem('search-kw') || '';
+  if (saved1) document.getElementById('search').value = saved1;
+  if (saved2) document.getElementById('search-kw').value = saved2;
+  if (saved1 || saved2) filterAll();
 })();
 </script>
 {% endblock %}
