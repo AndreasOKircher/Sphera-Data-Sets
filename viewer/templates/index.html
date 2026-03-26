@@ -40,9 +40,14 @@
   <div id="results-panel" style="display:none; margin-bottom:20px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
       <h2 style="font-size:16px; font-weight:bold;" id="results-question-label"></h2>
-      <button onclick="dismissResults()"
-        style="padding:3px 10px; font-size:12px; border:1px solid #ccc; border-radius:4px;
-               background:#fff; cursor:pointer;">✕ Dismiss</button>
+      <div style="display:flex; gap:6px;">
+        <button id="btn-export-md" onclick="exportMarkdown()" style="display:none;
+          padding:3px 10px; font-size:12px; border:1px solid #0057b8; border-radius:4px;
+          background:#fff; color:#0057b8; cursor:pointer;">⬇ Export .md</button>
+        <button onclick="dismissResults()"
+          style="padding:3px 10px; font-size:12px; border:1px solid #ccc; border-radius:4px;
+                 background:#fff; cursor:pointer;">✕ Dismiss</button>
+      </div>
     </div>
     <div id="results-error" style="color:#c00; font-size:14px; display:none;"></div>
     <table id="results-table" style="width:100%; border-collapse:collapse; background:#fff;
@@ -57,6 +62,7 @@
       </thead>
       <tbody id="results-tbody"></tbody>
     </table>
+    <div id="results-usage" style="display:none; margin-top:6px; font-size:12px; color:#888;"></div>
   </div>
 
   <!-- Card view -->
@@ -282,6 +288,46 @@ function filterAll() {
 })();
 
 const selectedUUIDs = new Set();
+let _lastQuestion = '';
+let _lastResults = [];
+
+function exportMarkdown() {
+  const now = new Date();
+  const ts = now.toISOString().slice(0, 16).replace('T', ' ');
+  const lines = [
+    '# LCA Dataset Query Results',
+    '',
+    `**Question:** ${_lastQuestion}`,
+    '',
+    `_Generated: ${ts}_`,
+    '',
+    '---',
+    '',
+    '| Rank | Dataset | Score | Comment |',
+    '|------|---------|-------|---------|',
+  ];
+  _lastResults.forEach(r => {
+    const name = (r.name || r.uuid).replace(/\|/g, '\\|');
+    const comment = (r.comment || '').replace(/\|/g, '\\|');
+    lines.push(`| ${r.rank} | ${name} | ${r.relevance_score}/5 | ${comment} |`);
+  });
+  lines.push('', '---', '', '## Details', '');
+  _lastResults.forEach(r => {
+    const score = Number(r.relevance_score) || 0;
+    lines.push(`### #${r.rank} — ${r.name || r.uuid} (${score}/5)`);
+    lines.push(`**UUID:** \`${r.uuid}\``);
+    lines.push('');
+    lines.push(r.comment || '');
+    lines.push('');
+  });
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `lca-query-${now.toISOString().slice(0,10)}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function toggleSelect(uuid, checked) {
   if (checked) { selectedUUIDs.add(uuid); } else { selectedUUIDs.delete(uuid); }
@@ -324,10 +370,15 @@ async function submitQuery() {
   const tableEl = document.getElementById('results-table');
   const tbody = document.getElementById('results-tbody');
   const label = document.getElementById('results-question-label');
+  const usageEl = document.getElementById('results-usage');
 
+  _lastQuestion = question;
+  _lastResults = [];
+  document.getElementById('btn-export-md').style.display = 'none';
   label.textContent = `Q: ${question}`;
   errorEl.style.display = 'none';
   tableEl.style.display = 'none';
+  usageEl.style.display = 'none';
   tbody.innerHTML = '';
   panel.style.display = 'block';
   panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -366,7 +417,17 @@ async function submitQuery() {
           <td style="padding:8px 12px; color:#444;">${r.comment || ''}</td>`;
         tbody.appendChild(tr);
       });
+      _lastResults = data.results;
+      document.getElementById('btn-export-md').style.display = '';
       tableEl.style.display = '';
+      if (data.usage) {
+        const u = data.usage;
+        let msg = `Tokens: ${u.input_tokens.toLocaleString()} in · ${u.output_tokens.toLocaleString()} out`;
+        if (u.cache_read_input_tokens) msg += ` · ${u.cache_read_input_tokens.toLocaleString()} from cache`;
+        if (u.cache_creation_input_tokens) msg += ` · ${u.cache_creation_input_tokens.toLocaleString()} written to cache`;
+        usageEl.textContent = msg;
+        usageEl.style.display = '';
+      }
     }
   } catch (err) {
     errorEl.textContent = `Request failed: ${err.message}`;

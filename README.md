@@ -72,9 +72,53 @@ Fields are split into two tiers. Both tiers are extracted and saved to JSON.
 `dqi_geographical_representativeness`, `dqi_completeness`, `dqi_precision`,
 `dqi_methodological_appropriateness`).
 
-**Excluded:** exchange flows (not available in metaDataOnly files), completeness section, compliance section, administrative info.
+**Excluded:** exchange flows (not available in metaDataOnly files), completeness section, compliance section, administrative info. See the next section for the rationale behind these exclusions.
 
 Full field mapping with XPaths and examples: `doc/field-mapping-draft.md`
+
+---
+
+## Design Rationale — JSON for LLM-Driven Dataset Discovery
+
+### The use case: dataset selection and semantic search
+
+The ultimate goal of converting Sphera datasets to JSON is to make them **machine-readable in a way that enables LLM-driven queries**. Typical questions this enables:
+
+- *"Give me all datasets covering steel production."*
+- *"Which datasets cover electricity consumption by consumers in China?"*
+- *"Find datasets where the overall data quality is 'good' and the reference year is after 2020."*
+
+An LLM can answer these by scanning JSON records directly — either by embedding a batch of records into a prompt, or by running structured filtering before passing the relevant subset to the model. Neither approach works well if the raw XML is used instead.
+
+### Why JSON, not XML
+
+The raw ILCD XML is the authoritative source and is always preserved. However, it is a poor format for LLM input:
+
+| Concern | ILCD XML | Flat JSON |
+|---|---|---|
+| **Token cost** | High — namespaces, closing tags, nesting, and attribute syntax inflate token count 3–5× compared to equivalent JSON | Low — key-value pairs with no syntactic overhead |
+| **Namespace clutter** | `ilcd:`, `common:`, `epd2013:` prefixes throughout — noisy for any model or tool parsing the content | None — prefixes resolved during parsing, keys are clean English names |
+| **Nesting depth** | Fields buried 5–8 levels deep; reaching `technology_description` requires traversing `processDataSet / processInformation / technology / ...` | All fields at the top level — a flat dict |
+| **LLM interpretability** | A model reading raw XML must parse structure *and* extract content simultaneously | A model reading JSON reads content directly; structure is already resolved |
+| **Programmatic filtering** | Requires XPath or a full XML parser | Plain dict lookup or `jq`-style access |
+
+The conversion in `core/parser.py` does the structural work once, up front. Everything downstream — the viewer, the enricher, any future LLM pipeline — operates on the clean JSON.
+
+### Why noise exclusion matters
+
+The Sphera web portal exposes considerably more fields than this toolkit extracts. The excluded sections contain data that adds token overhead without semantic value for dataset selection:
+
+- **Administrative info** — data generator contact details, version history, dataset owner, creation timestamps. Useful for data provenance audits, not for finding *what* a dataset covers.
+- **Compliance declarations** — references to specific ILCD compliance systems and conformance levels. Relevant for regulatory use, not for content-based search.
+- **Completeness section** — checklists of which modelling scopes were addressed. Verbose and highly repetitive across datasets.
+- **Exchange flows** — not available in these files (`metaDataOnly="true"`). Even if present, numeric exchange data is not useful for discovery queries.
+
+The MUST / NICE-TO-HAVE split reflects this logic:
+
+- **MUST fields** form the compact, semantically rich core that an LLM can scan to answer "what is this dataset, where, when, and how good is it?"
+- **NICE-TO-HAVE fields** add detail for human review or deeper technical queries, but are not needed for broad discovery searches.
+
+Keeping the token footprint small matters when batch-processing hundreds of datasets in a single LLM call or embedding them into a retrieval index.
 
 ---
 
@@ -333,7 +377,9 @@ python download.py --urls urls.txt --cookie-file cookie.txt
 
 ---
 
-## Outlook — Configurable Field Extraction
+## Outlook
+
+### Configurable Field Extraction
 
 Currently the XML → JSON field mapping is hardcoded in `core/parser.py`. A planned future improvement is to drive field extraction from a **YAML configuration file**, so new fields can be added without modifying Python code:
 
@@ -350,3 +396,25 @@ fields:
 About 80% of fields are simple `text` or `attr` extractions that fit this pattern directly. The remaining 20% are special cases requiring Python logic (DQI indicator loop, classification hierarchy concatenation, supply coverage float parsing, mathematical_relations fallback XPath) and would be handled as named hooks alongside the config.
 
 This enables different field profiles for different Sphera dataset categories (electronics, metals, plastics, energy) without code changes. A design document will be written before implementation.
+
+### Database Storage Instead of Single Files
+
+The current storage layout is one `.json` file per dataset in `dataset/output/`. This is simple and works well for a few hundred datasets. As the collection grows — across multiple Sphera database categories — flat file storage becomes a bottleneck:
+
+- **Discovery queries** (find all steel datasets, filter by geography, sort by reference year) require reading every JSON file into memory and scanning it in Python.
+- **Full-text search** over `technology_description` or other long fields has no index and scales linearly.
+- **Cross-dataset analytics** (aggregate by classification, distribution of data quality ratings) need pandas or similar, loaded fresh each time.
+
+A natural next step is to load the JSON records into **DuckDB** — an in-process analytical database that runs locally without a server, reads JSON natively, and supports full SQL. This would allow queries like:
+
+```sql
+SELECT uuid, name_base, location, reference_year
+FROM datasets
+WHERE classification LIKE '%Steel%'
+  AND dqi_overall_quality = 'good'
+ORDER BY reference_year DESC;
+```
+
+Beyond structured filtering, **vector embeddings** of the `technology_description` field (or the enriched summary) stored alongside the records would enable semantic search: *"find datasets similar to this process description"* — without requiring the LLM to scan every record in a prompt. DuckDB's `vss` extension supports this natively.
+
+The JSON files produced by this toolkit are the natural input to such a database — the parsing and noise-exclusion work done here is precisely what makes the records suitable for bulk loading and indexing.

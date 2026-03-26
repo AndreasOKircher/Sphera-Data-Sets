@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<!-- saved from url=(0035)https://vio.automotive-wan.com:446/ -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIO API Documentation</title>
+    <link rel="stylesheet" href="./VIO API Documentation_files/styles.css">
+    <link rel="stylesheet" href="./VIO API Documentation_files/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com/">
+    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
+    <link href="./VIO API Documentation_files/css2" rel="stylesheet">
+<style>
+        .keyboard-navigation a:focus,
+        .keyboard-navigation button:focus,
+        .keyboard-navigation label:focus {
+            outline: 3px solid var(--primary-color);
+            outline-offset: 3px;
+        }
+    </style><style>
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: white;
+            border-radius: var(--border-radius-md);
+            box-shadow: var(--shadow-md);
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            min-width: 300px;
+            max-width: 400px;
+            z-index: 9999;
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        .toast.hide {
+            transform: translateX(120%);
+        }
+        
+        .toast-icon {
+            margin-right: 15px;
+            font-size: 1.5rem;
+        }
+        
+        .toast-success .toast-icon {
+            color: var(--success-color);
+        }
+        
+        .toast-error .toast-icon {
+            color: var(--error-color);
+        }
+        
+        .toast-info .toast-icon {
+            color: var(--info-color);
+        }
+        
+        .toast-content {
+            flex-grow: 1;
+        }
+        
+        .toast-close {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #999;
+            padding: 5px;
+            margin-left: 10px;
+            transition: color 0.2s ease;
+        }
+        
+        .toast-close:hover {
+            color: #333;
+        }
+    </style><style>
+        @keyframes float {
+            0% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+            100% {
+                transform: translateY(0px);
+            }
+        }
+    </style></head>
+<body class="default">
+    <!-- Hero section with animated background -->
+    <div class="hero-section">
+        <div class="hero-content">
+            <div class="logo-animation">
+                <img src="./VIO API Documentation_files/vio_logo.png" alt="Vio Logo" class="hero-logo">
+            </div>
+            <h1 class="hero-title"><span>API</span></h1>
+            <p class="hero-subtitle">Powerful, Flexible, and Developer-Friendly</p>
+            <div class="hero-buttons">
+                <a id="get-started-btn" href="https://vio.automotive-wan.com:446/#introduction" class="hero-button primary">Get Started</a>
+                <a id="explore-apis-btn" href="https://vio.automotive-wan.com:446/#endpoints" class="hero-button secondary">Explore Endpoints</a>
+            </div>
+        </div>
+        <div class="hero-backdrop" style="background-position-y: 431px;"></div>
+    </div>
+
+    <header>
+        <div id="header-bar" class="scrolled">
+            <div class="container">
+                <div class="logo-title">
+                    <img src="./VIO API Documentation_files/vio_logo.png" alt="Vio Logo" class="logo">
+                    <h1><span>API</span></h1>
+                </div>
+                <button class="mobile-menu-toggle" aria-label="Toggle navigation menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+        </div>
+
+        <nav id="main-nav">
+            <div class="container">
+                <ul>
+                    <li><a href="https://vio.automotive-wan.com:446/#introduction"><i class="fas fa-info-circle"></i> Introduction</a></li>
+                    <li><a href="https://vio.automotive-wan.com:446/#installation"><i class="fas fa-download"></i> Installation</a></li>
+                    <li><a href="https://vio.automotive-wan.com:446/#authentication"><i class="fas fa-key"></i> Authentication</a></li>
+                    <li><a href="https://vio.automotive-wan.com:446/#endpoints"><i class="fas fa-code"></i> API Endpoints</a></li>
+                    <li><a href="https://vio.automotive-wan.com:446/#template-download"><i class="fas fa-file-code"></i> Templates</a></li>
+                    <li><a href="https://vio.automotive-wan.com:446/#docker-usage"><i class="fab fa-docker"></i> Docker Usage</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <div class="container">
+            <section id="introduction" class="fade-in-section visible">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fas fa-info-circle"></i></div>
+                    <h2>Introduction</h2>
+                </div>
+                <div class="card">
+                    <p>Welcome to the VIO API documentation. This comprehensive API provides access to VIO's AI capabilities, including chat completions, model management, file operations, and embeddings. The API is designed to be both powerful and flexible, with OpenAI-compatible endpoints for easy integration.</p>
+                    <div class="info-graphic">
+                        <div class="info-item">
+                            <div class="info-icon"><i class="fas fa-bolt"></i></div>
+                            <h3>Powerful</h3>
+                            <p>Full control over VIO models, files, and AI interactions</p>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-icon"><i class="fas fa-puzzle-piece"></i></div>
+                            <h3>OpenAI Compatible</h3>
+                            <p>Drop-in replacement for OpenAI API endpoints</p>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-icon"><i class="fas fa-code"></i></div>
+                            <h3>Developer-Friendly</h3>
+                            <p>Clear documentation with ready-to-use examples</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="installation" class="fade-in-section visible">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fas fa-download"></i></div>
+                    <h2>Installation</h2>
+                </div>
+                <div class="card">
+                    <p>To use the VIO API, you need to install the following Python packages:</p>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-title">Basic Requirements</span>
+                            <button class="copy-button" data-clipboard-target="#basic-requirements">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <pre><code id="basic-requirements">pip install python-dotenv requests python-certifi-win32</code></pre>
+                    </div>
+                    
+                    <p>For OpenAI-compatible endpoints, you can use the OpenAI SDK:</p>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-title">OpenAI SDK (Optional)</span>
+                            <button class="copy-button" data-clipboard-target="#openai-requirements">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <pre><code id="openai-requirements">pip install openai</code></pre>
+                    </div>
+                    
+                    <div class="installation-steps">
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>Set Up Environment</h4>
+                                <p>Create a virtual environment for your project</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>Install Dependencies</h4>
+                                <p>Run the pip install commands above</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>Configure API Access</h4>
+                                <p>Set up your API token (see Authentication)</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h4>Start Building</h4>
+                                <p>Use the templates to begin development</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="authentication" class="fade-in-section visible">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fas fa-key"></i></div>
+                    <h2>Authentication</h2>
+                </div>
+                <div class="card">
+                    <p>The VIO API uses token-based authentication. Different endpoints support different authentication methods:</p>
+                    
+                    <div class="info-graphic">
+                        <div class="info-item">
+                            <div class="info-icon"><i class="fas fa-lock"></i></div>
+                            <h3>Bearer Token</h3>
+                            <p>For OpenAI-compatible endpoints (/chat/completions, /models, /embeddings)</p>
+                            <div class="code-block">
+                                <pre><code>Authorization: Bearer your_api_token</code></pre>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-icon"><i class="fas fa-key"></i></div>
+                            <h3>Body Parameters</h3>
+                            <p>For VIO management endpoints (model and file operations)</p>
+                            <div class="code-block">
+                                <pre><code>{
+  "username": "your_username",
+  "token": "your_api_token"
+}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="auth-process">
+                        <h3>How to create a token?</h3>
+                        <div class="process-steps">
+                            <div class="process-step">
+                                <div class="process-icon">
+                                    <i class="fas fa-desktop"></i>
+                                </div>
+                                <div class="process-content">
+                                    <h4>Open VIO Application</h4>
+                                    <p>Launch the VIO desktop application</p>
+                                </div>
+                            </div>
+                            <div class="process-step">
+                                <div class="process-icon">
+                                    <i class="fas fa-plug"></i>
+                                </div>
+                                <div class="process-content">
+                                    <h4>Go to API Settings</h4>
+                                    <p>Navigate to 🔌 VIO API</p>
+                                </div>
+                            </div>
+                            <div class="process-step">
+                                <div class="process-icon">
+                                    <i class="fas fa-key"></i>
+                                </div>
+                                <div class="process-content">
+                                    <h4>Generate Token</h4>
+                                    <p>Create and manage your API tokens</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="note-box">
+                        <div class="note-icon"><i class="fas fa-info-circle"></i></div>
+                        <div class="note-content">
+                            <h4>Important</h4>
+                            <p>Once you have generated a token, make sure to set it as the API_TOKEN environment variable in your system or application configuration.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="code-block" style="transform: scale(1); box-shadow: var(--shadow-sm);">
+                        <div class="code-header">
+                            <span class="code-title">Example .env file</span>
+                            <button class="copy-button" data-clipboard-target="#env-example">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <pre><code id="env-example">API_USERNAME=your_username
+API_TOKEN=your_api_token</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <section id="base-url" class="fade-in-section visible">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fas fa-link"></i></div>
+                    <h2>Base URL</h2>
+                </div>
+                <div class="card">
+                    <p>All API requests should be made to the following base URL:</p>
+                    
+                    <div class="code-block" style="transform: scale(1); box-shadow: var(--shadow-sm);">
+                        <div class="code-header">
+                            <span class="code-title">VIO API Base URL</span>
+                            <button class="copy-button" data-clipboard-target="#base-url-code">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <pre><code id="base-url-code">https://vio.automotive-wan.com:446</code></pre>
+                    </div>
+                    
+                    <div class="info-box">
+                        <div class="info-icon"><i class="fas fa-info-circle"></i></div>
+                        <div class="info-content">
+                            <h4>Example Usage</h4>
+                            <p>Append the endpoint path to the base URL. For example, to access chat completions:</p>
+                            <code>https://vio.automotive-wan.com:446/chat/completions</code>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+            <section id="endpoints" class="fade-in-section visible">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fas fa-code"></i></div>
+                    <h2>API Endpoints</h2>
+                </div>
+                <div class="card">
+                    <p>The VIO API provides comprehensive endpoints for AI interactions and VIO management. Endpoints marked with <span class="tag tag-openai">OpenAI Compatible</span> can be used with standard OpenAI SDKs and tools.</p>
+                    
+                    <div class="tab">
+                        <button class="tablinks active" onclick="openApiTab(event, &#39;ChatEndpoints&#39;)">
+                            <i class="fas fa-comments"></i> Chat &amp; AI
+                        </button>
+                        <button class="tablinks" onclick="openApiTab(event, &#39;ModelManagement&#39;)">
+                            <i class="fas fa-brain"></i> VIO Models
+                        </button>
+                        <button class="tablinks" onclick="openApiTab(event, &#39;FileManagement&#39;)">
+                            <i class="fas fa-folder"></i> Files
+                        </button>
+                    </div>
+
+                    <!-- Chat & AI Endpoints -->
+                    <div id="ChatEndpoints" class="tabcontent" style="display: block;">
+                        <h3><i class="fas fa-comments"></i> Chat &amp; AI Endpoints</h3>
+                        
+                        <div class="endpoints-container">
+                            <div class="endpoint">
+                                <div class="endpoint-header">
+                                    <span class="method post">POST</span>
+                                    <span class="endpoint-path">/chat/completions</span>
+                                    <span class="tag tag-openai">OpenAI Compatible</span>
+                                    <div class="endpoint-actions">
+                                        <button class="endpoint-action-btn" onclick="toggleEndpointContent(this)">
+                                            <i class="fas fa-code"></i> Show Code
+                                        </button>
+                                    </div>
+                                </div>
+                                <p>Send chat completion requests to VIO models or direct LLM models. Supports streaming responses and OpenAI tool calling.</p>
+                                <div class="endpoint-content">
+                                    <div class="code-tabs">
+                                        <div class="code-tab-header">
+                                            <button class="code-tab-btn active" onclick="switchCodeTab(this, &#39;request&#39;)">Request</button>
+                                            <button class="code-tab-btn" onclick="switchCodeTab(this, &#39;response&#39;)">Response</button>
+                                            <button class="code-tab-btn" onclick="switchCodeTab(this, &#39;streaming&#39;)">Streaming</button>
+                                            <button class="code-tab-btn" onclick="switchCodeTab(this, &#39;direct-model&#39;)">Direct Model</button>
+                                        </div>
+                                        <div class="code-tab-content request active">
+                                            <div class="code-block">
+                                                <div class="code-header">
+                                                    <span class="code-title">Request Headers</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>Authorization: Bearer your_api_token
+Content-Type: application/json</code></pre>
+                                            </div>
+                                            <div class="code-block">
+                                                <div class="code-header">
+                                                    <span class="code-title">Request Body</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>{
+  "model": "Default",
+  "messages": [
+    {"role": "system", "content": "You are a helpful assistant."},
+    {"role": "user", "content": "Hello, how are you?"}
+  ],
+  "stream": false,
+  "tools": [  // Optional: OpenAI-compatible tool calling
+    {
+      "type": "function",
+      "function": {
+        "name": "get_weather",
+        "description": "Get the current weather",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "location": {"type": "string", "description": "City name"}
+          },
+          "required": ["location"]
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto"  // Optional: auto, none, or specific function
+}</code></pre>
+                                            </div>
+                                        </div>
+                                        <div class="code-tab-content response">
+                                            <div class="code-block">
+                                                <div class="code-header">
+                                                    <span class="code-title">Response Body</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>{
+  "id": "chatcmpl-123",
+  "object": "chat.completion",
+  "created": 1677858242,
+  "model": "Default",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Hello! I'm doing well, thank you for asking."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 13,
+    "completion_tokens": 12,
+    "total_tokens": 25
+  }
+}</code></pre>
+                                            </div>
+                                        </div>
+                                        <div class="code-tab-content streaming">
+                                            <div class="code-block">
+                                                <div class="code-header">
+                                                    <span class="code-title">Streaming Request</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>{
+  "model": "Default",
+  "messages": [
+    {"role": "user", "content": "Write a poem about AI"}
+  ],
+  "stream": true
+}</code></pre>
+                                            </div>
+                                            <div class="code-block">
+                                                <div class="code-header">
+                                                    <span class="code-title">Streaming Response</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1694268190,"model":"Default","choices":[{"index":0,"delta":{"content":"In"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1694268190,"model":"Default","choices":[{"index":0,"delta":{"content":" silicon"},"finish_reason":null}]}
+
+data: [DONE]</code></pre>
+                                            </div>
+                                        </div>
+                                        <div class="code-tab-content direct-model">
+                                            <div class="code-block">
+                                                <div class="code-header">
+                                                    <span class="code-title">Using Direct LLM Model</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>{
+  "model": "VIO:GPT-4o",  // Prefix with "VIO:" to bypass VIO prompts
+  "messages": [
+    {"role": "system", "content": "You are a helpful assistant."},
+    {"role": "user", "content": "Hello!"}
+  ],
+  "stream": false
+}</code></pre>
+                                            </div>
+                                            <div class="note-block">
+                                                <strong>Note:</strong> Models prefixed with "VIO:" bypass VIO-specific prompts and RAG capabilities, sending messages directly to the LLM.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="endpoint">
+                                <div class="endpoint-header">
+                                    <span class="method get">GET</span>
+                                    <span class="endpoint-path">/models</span>
+                                    <span class="tag tag-openai">OpenAI Compatible</span>
+                                    <div class="endpoint-actions">
+                                        <button class="endpoint-action-btn" onclick="toggleEndpointContent(this)">
+                                            <i class="fas fa-code"></i> Show Code
+                                        </button>
+                                    </div>
+                                </div>
+                                <p>List all available VIO models and direct LLM models that can be used with the API.</p>
+                                <div class="endpoint-content">
+                                    <div class="code-tabs">
+                                        <div class="code-tab-header">
+                                            <button class="code-tab-btn active" onclick="switchCodeTab(this, &#39;request&#39;)">Request</button>
+                                            <button class="code-tab-btn" onclick="switchCodeTab(this, &#39;response&#39;)">Response</button>
+                                        </div>
+                                        <div class="code-tab-content request active">
+                                            <div class="code-block">
+                                                <div class="code-header">
+                                                    <span class="code-title">Request Headers</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>Authorization: Bearer your_api_token</code></pre>
+                                            </div>
+                                        </div>
+                                        <div class="code-tab-content response">
+                                            <div class="code-block">
+                                                <div class="code-header">
+                                                    <span class="code-title">Response Body</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>{
+  "object": "list",
+  "data": [
+    {
+      "id": "Default",
+      "object": "model",
+      "created": 1677610602,
+      "owned_by": "vio"
+    },
+    {
+      "id": "VIO:GPT-4o",
+      "object": "model",
+      "created": 1677610602,
+      "owned_by": "vio"
+    }
+    // More models...
+  ]
+}</code></pre>
+                                            </div>
+                                            <div class="note-block">
+                                                <strong>Note:</strong> Models prefixed with "VIO:" are direct LLM models. Regular names are VIO models with specific prompts.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="endpoint">
+                                <div class="endpoint-header">
+                                    <span class="method post">POST</span>
+                                    <span class="endpoint-path">/embeddings</span>
+                                    <span class="tag tag-openai">OpenAI Compatible</span>
+                                    <div class="endpoint-actions">
+                                        <button class="endpoint-action-btn" onclick="toggleEndpointContent(this)"><i class="fas fa-code-slash"></i> Hide Code</button>
+                                    </div>
+                                </div>
+                                <p>Generate vector embeddings for text. Currently uses Amazon Titan Embeddings (amazon.titan-embed-text-v2:0).</p>
+                                <div class="endpoint-content" style="display: block;">
+                                    <div class="code-tabs">
+                                        <div class="code-tab-header">
+                                            <button class="code-tab-btn" onclick="switchCodeTab(this, &#39;request&#39;)">Request</button>
+                                            <button class="code-tab-btn active" onclick="switchCodeTab(this, &#39;response&#39;)">Response</button>
+                                        </div>
+                                        <div class="code-tab-content request">
+                                            <div class="code-block" style="transform: scale(1); box-shadow: var(--shadow-sm);">
+                                                <div class="code-header">
+                                                    <span class="code-title">Request Headers</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>Authorization: Bearer your_api_token
+Content-Type: application/json</code></pre>
+                                            </div>
+                                            <div class="code-block" style="transform: scale(1); box-shadow: var(--shadow-sm);">
+                                                <div class="code-header">
+                                                    <span class="code-title">Request Body</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>{
+  "model": "text-embedding-ada-002",  // For compatibility
+  "input": "Your text to embed"  // String or array of strings
+}</code></pre>
+                                            </div>
+                                            <div class="note-block">
+                                                <strong>Note:</strong> Currently uses Amazon Titan regardless of model parameter.
+                                            </div>
+                                        </div>
+                                        <div class="code-tab-content response active">
+                                            <div class="code-block" style="transform: scale(1); box-shadow: var(--shadow-sm);">
+                                                <div class="code-header">
+                                                    <span class="code-title">Response Body</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>{
+  "object": "list",
+  "data": [
+    {
+      "object": "embedding",
+      "embedding": [0.0023064255, -0.009327292, ...],
+      "index": 0
+    }
+  ],
+  "model": "text-embedding-ada-002",
+  "usage": {
+    "prompt_tokens": 8,
+    "total_tokens": 8
+  }
+}</code></pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3><i class="fas fa-plug"></i> Using OpenAI SDK</h3>
+                        <p>The OpenAI-compatible endpoints can be used directly with the OpenAI SDK:</p>
+                        
+                        <div class="code-tab">
+                            <button class="code-tablinks active" onclick="openCodeTab(event, &#39;Python&#39;)">
+                                <i class="fab fa-python"></i> Python
+                            </button>
+                            <button class="code-tablinks" onclick="openCodeTab(event, &#39;JavaScript&#39;)">
+                                <i class="fab fa-js"></i> JavaScript
+                            </button>
+                            <button class="code-tablinks" onclick="openCodeTab(event, &#39;Curl&#39;)">
+                                <i class="fas fa-terminal"></i> Curl
+                            </button>
+                        </div>
+
+                        <div id="Python" class="code-tabcontent" style="display: block;">
+                            <div class="code-block" style="transform: scale(1.01); box-shadow: var(--shadow-md);">
+                                <div class="code-header">
+                                    <span class="code-title">Python Example</span>
+                                    <button class="copy-button">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                                <pre><code>import openai
+
+client = openai.OpenAI(
+    api_key="your_vio_api_token",
+    base_url="https://contivity.aws3116.ec1.aws.automotive.cloud:446/"
+)
+
+# Chat completion
+response = client.chat.completions.create(
+    model="Default",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Explain quantum computing"}
+    ]
+)
+print(response.choices[0].message.content)
+
+# Streaming
+stream = client.chat.completions.create(
+    model="Default",
+    messages=[{"role": "user", "content": "Write a story"}],
+    stream=True
+)
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")</code></pre>
+                            </div>
+                        </div>
+
+                        <div id="JavaScript" class="code-tabcontent">
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span class="code-title">JavaScript Example</span>
+                                    <button class="copy-button">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                                <pre><code>import OpenAI from 'openai';
+
+const openai = new OpenAI({
+  apiKey: 'your_vio_api_token',
+  baseURL: 'https://contivity.aws3116.ec1.aws.automotive.cloud:446/'
+});
+
+const completion = await openai.chat.completions.create({
+  model: 'Default',
+  messages: [
+    { role: 'system', content: 'You are a helpful assistant.' },
+    { role: 'user', content: 'Explain quantum computing' }
+  ]
+});
+
+console.log(completion.choices[0].message.content);</code></pre>
+                            </div>
+                        </div>
+
+                        <div id="Curl" class="code-tabcontent">
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span class="code-title">Curl Example</span>
+                                    <button class="copy-button">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                                <pre><code>curl https://contivity.aws3116.ec1.aws.automotive.cloud:446/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your_vio_api_token" \
+  -d '{
+    "model": "Default",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "Explain quantum computing"}
+    ]
+  }'</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIO Model Management -->
+                    <div id="ModelManagement" class="tabcontent">
+                        <h3><i class="fas fa-brain"></i> VIO Model Management</h3>
+                        <p>Create, edit, and delete custom VIO models with specific configurations.</p>
+                        
+                        <div class="endpoints-container">
+                            <div class="endpoint">
+                                <div class="endpoint-header">
+                                    <span class="method post">POST</span>
+                                    <span class="endpoint-path">/create_vio_model</span>
+                                    <div class="endpoint-actions">
+                                        <button class="endpoint-action-btn" onclick="toggleEndpointContent(this)">
+                                            <i class="fas fa-code"></i> Show Code
+                                        </button>
+                                    </div>
+                                </div>
+                                <p>Create a new VIO model with custom settings and AI model selection.</p>
+                                <div class="endpoint-content">
+                                    <div class="code-tabs">
+                                        <div class="code-tab-header">
+                                            <button class="code-tab-btn active" onclick="switchCodeTab(this, &#39;request&#39;)">Request</button>
+                                            <button class="code-tab-btn" onclick="switchCodeTab(this, &#39;response&#39;)">Response</button>
+                                        </div>
+                                        <div class="code-tab-content request active">
+                                            <div class="code-block">
+                                                <div class="code-header">
+                                                    <span class="code-title">Request Body</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>{
+  "type": "CREATE_VIO_MODEL",
+  "username": "your_username",
+  "token": "your_api_token",
+  "name": "MyVioModel",
+  "description": "A custom VIO model",
+  "is_public": false,
+  "is_token_protected": false,
+  "ai_model": "Default"
+}</code></pre>
+                                            </div>
+                                        </div>
+                                        <div class="code-tab-content response">
+                                            <div class="code-block">
+                                                <div class="code-header">
+                                                    <span class="code-title">Response Body</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>{
+  "message": "VIO model created."
+}</code></pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="endpoint">
+                                <div class="endpoint-header">
+                                    <span class="method put">PUT</span>
+                                    <span class="endpoint-path">/edit_vio_model</span>
+                                    <div class="endpoint-actions">
+                                        <button class="endpoint-action-btn" onclick="toggleEndpointContent(this)">
+                                            <i class="fas fa-code"></i> Show Code
+                                        </button>
+                                    </div>
+                                </div>
+                                <p>Edit an existing VIO model's properties including name, description, and visibility.</p>
+                                <div class="endpoint-content">
+                                    <div class="code-tabs">
+                                        <div class="code-tab-header">
+                                            <button class="code-tab-btn active" onclick="switchCodeTab(this, &#39;request&#39;)">Request</button>
+                                            <button class="code-tab-btn" onclick="switchCodeTab(this, &#39;response&#39;)">Response</button>
+                                        </div>
+                                        <div class="code-tab-content request active">
+                                            <div class="code-block">
+                                                <div class="code-header">
+                                                    <span class="code-title">Request Body</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>{
+  "type": "EDIT_VIO_MODEL",
+  "username": "your_username",
+  "token": "your_api_token",
+  "original_name": "MyVioModel",
+  "changed_name": "RenamedModel",
+  "description": "Updated description",
+  "is_public": true,
+  "is_token_protected": false,
+  "ai_model": "GPT-4o"
+}</code></pre>
+                                            </div>
+                                        </div>
+                                        <div class="code-tab-content response">
+                                            <div class="code-block">
+                                                <div class="code-header">
+                                                    <span class="code-title">Response Body</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>{
+  "message": "VIO model updated."
+}</code></pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="endpoint">
+                                <div class="endpoint-header">
+                                    <span class="method delete">DELETE</span>
+                                    <span class="endpoint-path">/delete_vio_model</span>
+                                    <div class="endpoint-actions">
+                                        <button class="endpoint-action-btn" onclick="toggleEndpointContent(this)">
+                                            <i class="fas fa-code"></i> Show Code
+                                        </button>
+                                    </div>
+                                </div>
+                                <p>Delete a VIO model permanently.</p>
+                                <div class="endpoint-content">
+                                    <div class="code-tabs">
+                                        <div class="code-tab-header">
+                                            <button class="code-tab-btn active" onclick="switchCodeTab(this, &#39;request&#39;)">Request</button>
+                                            <button class="code-tab-btn" onclick="switchCodeTab(this, &#39;response&#39;)">Response</button>
+                                        </div>
+                                        <div class="code-tab-content request active">
+                                            <div class="code-block">
+                                                <div class="code-header">
+                                                    <span class="code-title">Request Body</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>{
+  "type": "DELETE_VIO_MODEL",
+  "username": "your_username",
+  "token": "your_api_token",
+  "name": "ModelToDelete"
+}</code></pre>
+                                            </div>
+                                        </div>
+                                        <div class="code-tab-content response">
+                                            <div class="code-block">
+                                                <div class="code-header">
+                                                    <span class="code-title">Response Body</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>{
+  "message": "VIO model 'ModelToDelete' deleted."
+}</code></pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- File Management -->
+                    <div id="FileManagement" class="tabcontent">
+                        <h3><i class="fas fa-folder"></i> File Management</h3>
+                        <p>Upload, load, and manage files associated with VIO models for RAG capabilities.</p>
+                        
+                        <div class="endpoints-container">
+                            <div class="endpoint">
+                                <div class="endpoint-header">
+                                    <span class="method post">POST</span>
+                                    <span class="endpoint-path">/add_file</span>
+                                    <div class="endpoint-actions">
+                                        <button class="endpoint-action-btn" onclick="toggleEndpointContent(this)">
+                                            <i class="fas fa-code"></i> Show Code
+                                        </button>
+                                    </div>
+                                </div>
+                                <p>Upload files to be associated with a specific VIO model.</p>
+                                <div class="endpoint-content">
+                                    <div class="code-tabs">
+                                        <div class="code-tab-header">
+                                            <button class="code-tab-btn active" onclick="switchCodeTab(this, &#39;request&#39;)">Request</button>
+                                            <button class="code-tab-btn" onclick="switchCodeTab(this, &#39;response&#39;)">Response</button>
+                                        </div>
+                                        <div class="code-tab-content request active">
+                                            <div class="code-block">
+                                                <div class="code-header">
+                                                    <span class="code-title">Form Data</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>type: ADD_FILE
+username: your_username
+token: your_api_token
+vio_model: Default
+files: [file1.pdf, file2.pdf]  // Multiple files</code></pre>
+                                            </div>
+                                        </div>
+                                        <div class="code-tab-content response">
+                                            <div class="code-block">
+                                                <div class="code-header">
+                                                    <span class="code-title">Response Body</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>{
+  "message": "File 'file.pdf' added successfully to VIO model 'Default'."
+}</code></pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="endpoint">
+                                <div class="endpoint-header">
+                                    <span class="method post">POST</span>
+                                    <span class="endpoint-path">/load_file</span>
+                                    <div class="endpoint-actions">
+                                        <button class="endpoint-action-btn" onclick="toggleEndpointContent(this)">
+                                            <i class="fas fa-code"></i> Show Code
+                                        </button>
+                                    </div>
+                                </div>
+                                <p>Process and load files for a VIO model to enable RAG capabilities.</p>
+                                <div class="endpoint-content">
+                                    <div class="code-tabs">
+                                        <div class="code-tab-header">
+                                            <button class="code-tab-btn active" onclick="switchCodeTab(this, &#39;request&#39;)">Request</button>
+                                            <button class="code-tab-btn" onclick="switchCodeTab(this, &#39;response&#39;)">Response</button>
+                                        </div>
+                                        <div class="code-tab-content request active">
+                                            <div class="code-block">
+                                                <div class="code-header">
+                                                    <span class="code-title">Request Body</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>{
+  "type": "LOAD_FILE",
+  "username": "your_username",
+  "token": "your_api_token",
+  "vio_model": "Default",
+  "files": ["file1.pdf", "file2.pdf"],
+  "all": false  // Set to true to load all files
+}</code></pre>
+                                            </div>
+                                        </div>
+                                        <div class="code-tab-content response">
+                                            <div class="code-block">
+                                                <div class="code-header">
+                                                    <span class="code-title">Response Body</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>{
+  "message": "Files loaded successfully for VIO model 'Default'."
+}</code></pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="endpoint">
+                                <div class="endpoint-header">
+                                    <span class="method post">POST</span>
+                                    <span class="endpoint-path">/delete_file</span>
+                                    <div class="endpoint-actions">
+                                        <button class="endpoint-action-btn" onclick="toggleEndpointContent(this)">
+                                            <i class="fas fa-code"></i> Show Code
+                                        </button>
+                                    </div>
+                                </div>
+                                <p>Delete files from a VIO model.</p>
+                                <div class="endpoint-content">
+                                    <div class="code-tabs">
+                                        <div class="code-tab-header">
+                                            <button class="code-tab-btn active" onclick="switchCodeTab(this, &#39;request&#39;)">Request</button>
+                                            <button class="code-tab-btn" onclick="switchCodeTab(this, &#39;response&#39;)">Response</button>
+                                        </div>
+                                        <div class="code-tab-content request active">
+                                            <div class="code-block">
+                                                <div class="code-header">
+                                                    <span class="code-title">Request Body</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>{
+  "type": "DELETE_FILE",
+  "username": "your_username",
+  "token": "your_api_token",
+  "vio_model": "Default",
+  "files": ["file1.pdf", "file2.pdf"],
+  "all": false  // Set to true to delete all files
+}</code></pre>
+                                            </div>
+                                        </div>
+                                        <div class="code-tab-content response">
+                                            <div class="code-block">
+                                                <div class="code-header">
+                                                    <span class="code-title">Response Body</span>
+                                                    <button class="copy-button">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <pre><code>{
+  "message": "Files deleted successfully from VIO model 'Default'."
+}</code></pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="template-download" class="fade-in-section visible">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fas fa-file-code"></i></div>
+                    <h2>Template Download</h2>
+                </div>
+                <div class="card">
+                    <p>Choose a Python template to get started with the VIO API:</p>
+                    
+                    <div class="template-buttons">
+                        <div class="template-button">
+                            <div class="template-icon"><i class="fas fa-brain"></i></div>
+                            <div class="template-title">VIO Management Template</div>
+                            <div class="template-description">
+                                Complete client for VIO model and file management operations.
+                            </div>
+                            <button id="download-headless-template" class="download-btn"><i class="fas fa-download"></i> Download Template</button>
+                        </div>
+                        
+                        <div class="template-button">
+                            <div class="template-icon"><i class="fas fa-exchange-alt"></i></div>
+                            <div class="template-title">OpenAI SDK Template</div>
+                            <div class="template-description">
+                                Python client using the OpenAI library for chat completions and embeddings.
+                            </div>
+                            <button id="download-openai-template" class="download-btn"><i class="fas fa-download"></i> Download Template</button>
+                        </div>
+
+                        <div class="template-button">
+                            <div class="template-icon"><i class="fas fa-link"></i></div>
+                            <div class="template-title">LangChain Template</div>
+                            <div class="template-description">
+                                Integration template for using VIO with LangChain framework.
+                            </div>
+                            <button id="download-langchain-template" class="download-btn"><i class="fas fa-download"></i> Download Template</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="docker-usage" class="fade-in-section visible">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fab fa-docker"></i></div>
+                    <h2>Docker Usage</h2>
+                </div>
+                <div class="card">
+                    <p>When using the VIO API within a Docker container, you need to properly handle SSL certificates for secure communication. Follow these steps:</p>
+                    
+                    <div class="steps-container">
+                        <div class="step">
+                            <div class="step-content">
+                                <h4>1. Install Certificate Library</h4>
+                                <p>Include the <code>certifi</code> library in your requirements:</p>
+                                <div class="code-block" style="transform: scale(1); box-shadow: var(--shadow-sm);">
+                                    <div class="code-header">
+                                        <span class="code-title">requirements.txt</span>
+                                        <button class="copy-button" data-clipboard-target="#docker-req">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                    <pre><code id="docker-req">requests
+python-dotenv
+certifi
+python-certifi-win32</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="step">
+                            <div class="step-content">
+                                <h4>2. Export Certificates</h4>
+                                <p>Export necessary certificates from your browser or system and place them in a <code>/Certificat</code> directory:</p>
+                                <div class="note-box">
+                                    <div class="note-icon"><i class="fas fa-info-circle"></i></div>
+                                    <div class="note-content">
+                                        <h4>Certificate Export</h4>
+                                        <p>Export the required certificates and save them as <code>trusted_certs.crt</code> in your project's <code>/Certificat</code> directory.</p>
+                                    </div>
+                                </div>
+                                <div class="directory-structure">
+                                    <pre><code>your-project/
+├── Dockerfile
+├── requirements.txt
+├── src/
+│   └── main.py
+└── Certificat/
+    └── trusted_certs.crt</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="step">
+                            <div class="step-content">
+                                <h4>3. Update Dockerfile</h4>
+                                <p>Modify your Dockerfile to include certificates:</p>
+                                <div class="code-block" style="transform: scale(1); box-shadow: var(--shadow-sm);">
+                                    <div class="code-header">
+                                        <span class="code-title">Dockerfile</span>
+                                        <button class="copy-button" data-clipboard-target="#docker-file">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                    <pre><code id="docker-file">FROM python:3.9-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Create directory for certificates
+RUN mkdir -p /Certificat
+
+# Copy certificates
+COPY ./Certificat/trusted_certs.crt /Certificat/trusted_certs.crt
+
+COPY ./src /app/src
+
+CMD ["python", "src/main.py"]</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="step">
+                            <div class="step-content">
+                                <h4>4. Configure Certificate Verification</h4>
+                                <p>Add certificate handling to your code:</p>
+                                <div class="code-block" style="transform: scale(1); box-shadow: var(--shadow-sm);">
+                                    <div class="code-header">
+                                        <span class="code-title">Certificate Setup</span>
+                                        <button class="copy-button" data-clipboard-target="#cert-code">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                    <pre><code id="cert-code">import os
+import requests
+
+class VioApiClient:
+    def __init__(self):
+        self.session = requests.Session()
+        self.setup_certificate_verification()
+        
+    def setup_certificate_verification(self):
+        cert_dir = "/Certificat"
+        if os.path.exists(cert_dir):
+            custom_bundle = os.path.join(cert_dir, "custom_bundle.pem")
+            with open(custom_bundle, 'wb') as bundle:
+                for cert_file in ["trusted_certs.crt"]:
+                    file_path = os.path.join(cert_dir, cert_file)
+                    if os.path.exists(file_path):
+                        with open(file_path, 'rb') as cert:
+                            bundle.write(cert.read())
+                            bundle.write(b'\n')
+            self.session.verify = custom_bundle</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="warning-box">
+                        <div class="warning-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                        <div class="warning-content">
+                            <h4>Security Note</h4>
+                            <p>Always ensure certificates are properly secured and not exposed in public repositories. Consider using Docker secrets or environment variables for sensitive information in production.</p>
+                        </div>
+                    </div>
+                    
+                    <h3>Building and Running</h3>
+                    <div class="code-block" style="transform: scale(1); box-shadow: var(--shadow-sm);">
+                        <div class="code-header">
+                            <span class="code-title">Build and Run Commands</span>
+                            <button class="copy-button" data-clipboard-target="#docker-commands">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <pre><code id="docker-commands"># Build the Docker image
+docker build -t vio-api-client .
+
+# Run the container
+docker run --name vio-client vio-api-client</code></pre>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <img src="./VIO API Documentation_files/vio_logo.png" alt="Vio Logo" class="footer-logo-img">
+                </div>
+                <div class="footer-links">
+                    <div class="footer-links-column">
+                        <h4>Documentation</h4>
+                        <ul>
+                            <li><a href="https://vio.automotive-wan.com:446/#introduction">Introduction</a></li>
+                            <li><a href="https://vio.automotive-wan.com:446/#installation">Installation</a></li>
+                            <li><a href="https://vio.automotive-wan.com:446/#authentication">Authentication</a></li>
+                            <li><a href="https://vio.automotive-wan.com:446/#endpoints">API Endpoints</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-links-column">
+                        <h4>Resources</h4>
+                        <ul>
+                            <li><a href="https://vio.automotive-wan.com:446/#template-download">Templates</a></li>
+                            <li><a href="https://vio.automotive-wan.com:446/#docker-usage">Docker Usage</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>©VIO. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Back to top button -->
+    <button id="back-to-top" aria-label="Back to top" class="visible">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <!-- Scripts -->
+    <script src="./VIO API Documentation_files/clipboard.min.js.Herunterladen"></script>
+    <script src="./VIO API Documentation_files/main.js.Herunterladen"></script>
+    <script src="./VIO API Documentation_files/api.js.Herunterladen"></script>
+
+</body></html>
