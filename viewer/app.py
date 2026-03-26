@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from viewer.sections import SECTIONS, DEFAULT_OPEN
+from core.llm import create_llm_client
 
 # When frozen by PyInstaller:
 #   - dataset/ lives next to the .exe  (user data, not bundled)
@@ -27,8 +28,21 @@ ENRICHED_DIR = _BASE / "dataset" / "enriched"
 
 app = Flask(__name__, **({"template_folder": _TEMPLATE_DIR} if _TEMPLATE_DIR else {}))
 
-app.config["ANTHROPIC_API_KEY"] = os.environ.get("ANTHROPIC_API_KEY", "")
-app.config["LLM_CLIENT"] = None  # set at startup by caller or __main__
+def _build_llm_client():
+    provider = os.environ.get("LLM_PROVIDER", "anthropic")
+    model    = os.environ.get("LLM_MODEL", "claude-haiku-4-5")
+    if provider == "anthropic":
+        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+        return create_llm_client("anthropic", api_key=api_key, model=model) if api_key else None
+    if provider == "vio":
+        api_key   = os.environ.get("API_TOKEN", "")
+        base_url  = os.environ.get("VIO_BASE_URL", "https://vio.automotive-wan.com:446")
+        tenant_id = os.environ.get("VIO_TENANT_ID", "default_tenant")
+        return create_llm_client("vio", api_key=api_key, model=model,
+                                 base_url=base_url, tenant_id=tenant_id) if api_key else None
+    return None
+
+app.config["LLM_CLIENT"] = _build_llm_client()
 
 
 @app.context_processor
