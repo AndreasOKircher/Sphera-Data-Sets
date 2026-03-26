@@ -12,7 +12,10 @@ This toolkit:
 1. **Downloads** the XML files from the Sphera portal (requires session authentication)
 2. **Parses** the XML into clean flat JSON records
 3. **Views** the data — in a terminal or a local web browser
-4. **Enriches** the `technology_description` field using the Claude API, producing a structured plain-language summary and a formatted version
+4. **Enriches** the `technology_description` field using an LLM, producing a structured plain-language summary and a formatted version
+5. **Queries** the dataset collection in the web viewer by asking a natural language question — the LLM ranks the selected datasets by relevance
+
+LLM calls are routed through a provider abstraction (`core/llm.py`) that supports **Anthropic Claude** and **VIO** (an OpenAI-compatible internal API) interchangeably.
 
 The primary dataset used during development is the **Sphera Electronics & Electrics (EE)** database, containing passive electronic components (capacitors, resistors, inductors, transistors, ICs, oscillators, etc.).
 
@@ -142,12 +145,16 @@ Keeping the token footprint small matters when batch-processing hundreds of data
    view.py                        ← terminal list
    view.py <uuid>                 ← terminal detail
    viewer/app.py                  ← web browser at localhost:5000
+        │
+        └── select datasets → ask LLM question → ranked results table
+            ⬇ Export .md button → download query results as markdown
+            ⬇ Export visible as .md → download filtered list as markdown
 
 4. Enrich
-   enrich.py --all --workers 4
+   enrich.py --all --workers 4 [--provider anthropic|vio]
         │
         ├── SHA-256 dedup scan (no API call for duplicate texts)
-        ├── 2 parallel Claude API calls per unique text
+        ├── 2 parallel LLM calls per unique text
         │       Call 1: plain-language summary (max_tokens=300)
         │       Call 2: markdown-formatted version (max_tokens=16000)
         └── word/char count verification
@@ -156,6 +163,56 @@ Keeping the token footprint small matters when batch-processing hundreds of data
    dataset/enriched/{uuid}.json   ← enrichment sidecar, original untouched
    dataset/dedup/text_cache.json  ← hash → uuid dedup cache
 ```
+
+---
+
+## LLM Providers
+
+All LLM calls go through the `LLMClient` abstraction in `core/llm.py`, which exposes a single method:
+
+```python
+client.complete(system: str, user: str, max_tokens: int) -> str
+```
+
+Two providers are supported:
+
+### Anthropic (default)
+
+Uses the Anthropic Messages API. Applies `cache_control: ephemeral` on all system prompts automatically (reduces cost on repeated calls).
+
+Required env vars:
+```
+LLM_PROVIDER=anthropic
+LLM_MODEL=claude-haiku-4-5-20251001
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+Batch mode (`enrich.py --batch`) is Anthropic-only and uses the Anthropic Batch API directly (bypasses the `LLMClient` abstraction, ~50% cheaper, asynchronous).
+
+### VIO
+
+Uses the VIO API, which is OpenAI-compatible. `cache_control` is not applied (not supported by VIO).
+
+Required env vars:
+```
+LLM_PROVIDER=vio
+LLM_MODEL=Default
+API_TOKEN=<your VIO token>
+VIO_BASE_URL=https://vio.automotive-wan.com:446
+VIO_TENANT_ID=default_tenant
+```
+
+Custom HTTP headers are set automatically: `useLegacyCompletionsEndpoint: false` and `X-Tenant-ID`.
+
+### Selecting the provider
+
+**For `enrich.py`:** use the `--provider` flag:
+```bash
+python enrich.py --all --provider anthropic   # default
+python enrich.py --all --provider vio
+```
+
+**For `viewer/app.py`:** set `LLM_PROVIDER` in `.env` before starting the server. The viewer reads it once at startup.
 
 ---
 
@@ -220,7 +277,8 @@ Many LCA datasets (especially electronics components from the same manufacturer)
 |---|---|---|
 | Input: URL list | any `.txt` file | One Sphera dataset URL per line |
 | Input: Session cookie | `cookie.txt` (gitignored) | Browser session cookie for Sphera portal |
-| Input: API key | `.env` → `ANTHROPIC_API_KEY` | Anthropic API key for enrichment |
+| Input: API key (Anthropic) | `.env` → `ANTHROPIC_API_KEY` | Required when `LLM_PROVIDER=anthropic` |
+| Input: API key (VIO) | `.env` → `API_TOKEN` | Required when `LLM_PROVIDER=vio` |
 | Raw XML | `dataset/output/{uuid}.xml` | Downloaded ILCD XML, never modified |
 | Parsed JSON | `dataset/output/{uuid}.json` | Flat record, 33 fields |
 | Enriched sidecar | `dataset/enriched/{uuid}.json` | 12 enrichment fields, added alongside original |
@@ -280,8 +338,10 @@ Many LCA datasets (especially electronics components from the same manufacturer)
 - `--uuid <uuid>` / `--all` — single or all
 - `--force` — re-enrich already enriched datasets
 - `--workers N` — parallel dataset workers (default: 4)
-- `--model <id>` — Claude model (default: `claude-haiku-4-5-20251001`)
+- `--provider anthropic|vio` — LLM provider (default: `anthropic`)
+- `--model <id>` — model ID for the selected provider (default: `claude-haiku-4-5-20251001`)
 - `--threshold <pct>` — max word/char deviation % before FAIL (default: 6.0)
+- `--batch` — use Anthropic Batch API (Anthropic only, ~50% cheaper, async)
 
 **`view.py`**
 - `<uuid>` — inspect a specific dataset
@@ -304,17 +364,22 @@ project root
 │   ├── downloader.py           HTTP fetch with cookie/User-Agent auth
 │   ├── parser.py               ILCD XML → flat dict (lxml, XPath)
 │   ├── exporter.py             Write .xml + .json to output dir
-│   └── enricher.py             clean_text, count_words, count_chars,
-│                               verify_counts, enrich_dataset,
-│                               SUMMARY_SYSTEM / FORMAT_SYSTEM prompts
+│   ├── enricher.py             clean_text, count_words, count_chars,
+│   │                           verify_counts, enrich_dataset,
+│   │                           SUMMARY_SYSTEM / FORMAT_SYSTEM prompts
+│   └── llm.py                  LLMClient protocol, AnthropicLLMClient,
+│                               VIOLLMClient, create_llm_client() factory
 │
 ├── viewer/
 │   ├── app.py                  Flask web app (routes, data loading)
 │   ├── sections.py             Field groupings: SECTIONS, MUST_FIELDS,
 │   │                           DEFAULT_OPEN (shared by terminal + web)
+│   ├── query.py                LLM query engine: build_prompt, parse_response,
+│   │                           run_query / run_query_with_usage
 │   └── templates/
 │       ├── base.html           Nav bar, shared CSS, layout shell
-│       ├── index.html          Dataset list: cards + table view, search
+│       ├── index.html          Dataset list: cards + table view, search,
+│       │                       LLM query panel, markdown export buttons
 │       ├── dataset.html        Dataset detail: collapsible sections,
 │       │                       enrichment summary card, formatted/original
 │       │                       toggle, inline markdown renderer
@@ -323,7 +388,9 @@ project root
 ├── tests/
 │   ├── test_parser.py          Parser unit tests
 │   ├── test_exporter.py        Exporter unit tests
-│   └── test_enricher.py        Enricher unit tests (mocked API, 47 tests)
+│   ├── test_enricher.py        Enricher unit tests (mocked LLMClient, 47 tests)
+│   ├── test_llm.py             LLMClient unit tests — Anthropic + VIO (16 tests)
+│   └── test_query.py           Query engine + Flask route tests (26 tests)
 │
 ├── dataset/
 │   ├── output/                 Downloaded XMLs + parsed JSONs
@@ -352,9 +419,21 @@ project root
 python -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
 
-# Add your Anthropic API key
+# Configure your LLM provider
 copy .env.example .env
-# edit .env: ANTHROPIC_API_KEY=sk-ant-...
+# edit .env — choose one:
+
+# Option A — Anthropic (default)
+#   LLM_PROVIDER=anthropic
+#   LLM_MODEL=claude-haiku-4-5-20251001
+#   ANTHROPIC_API_KEY=sk-ant-...
+
+# Option B — VIO
+#   LLM_PROVIDER=vio
+#   LLM_MODEL=Default
+#   API_TOKEN=<your VIO token>
+#   VIO_BASE_URL=https://vio.automotive-wan.com:446
+#   VIO_TENANT_ID=default_tenant
 ```
 
 Run tests:

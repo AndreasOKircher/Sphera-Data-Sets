@@ -165,7 +165,12 @@
     </table>
   </div>
 
-  <p id="count-label" style="margin-top:20px; color:#666; font-size:13px;">{{ datasets | length }} datasets loaded</p>
+  <div style="margin-top:20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+    <p id="count-label" style="color:#666; font-size:13px; margin:0;">{{ datasets | length }} datasets loaded</p>
+    <button onclick="exportVisibleMd()"
+      style="padding:3px 10px; font-size:12px; border:1px solid #0057b8; border-radius:4px;
+             background:#fff; color:#0057b8; cursor:pointer;">⬇ Export visible as .md</button>
+  </div>
 {% endif %}
 
 <style>
@@ -440,6 +445,88 @@ async function submitQuery() {
 
 function dismissResults() {
   document.getElementById('results-panel').style.display = 'none';
+}
+
+function exportVisibleMd() {
+  const now = new Date();
+  const ts = now.toISOString().slice(0, 16).replace('T', ' ');
+  const q1 = document.getElementById('search').value.trim();
+  const q2 = document.getElementById('search-kw').value.trim();
+  const filterDesc = [q1 && `name: "${q1}"`, q2 && `keyword: "${q2}"`].filter(Boolean).join(', ');
+
+  const lines = [
+    '# LCA Datasets Export',
+    '',
+    filterDesc ? `**Filter:** ${filterDesc}` : '**Filter:** none (all datasets)',
+    '',
+    `_Generated: ${ts}_`,
+    '',
+    '---',
+    '',
+    '| # | Name | Location | Year | Classification |',
+    '|---|------|----------|------|----------------|',
+  ];
+
+  // Collect visible items from whichever view is active
+  const items = [];
+  document.querySelectorAll('#view-cards > a').forEach(el => {
+    if (el.style.display !== 'none') items.push(el);
+  });
+  // If list view has entries, use those instead (same data, deduplicate by uuid)
+  const seenUUIDs = new Set(items.map(el => el.dataset.uuid));
+  document.querySelectorAll('#view-list tbody tr').forEach(row => {
+    if (row.style.display === 'none') return;
+    const uuid = row.dataset.uuid;
+    if (uuid && !seenUUIDs.has(uuid)) items.push(row);
+  });
+
+  const datasetMap = {};
+  {% for d in datasets %}
+  datasetMap["{{ d.uuid }}"] = {
+    name: {{ (d.name_base or '') | tojson }},
+    location: {{ (d.location or '') | tojson }},
+    year: {{ (d.reference_year or '') | tojson }},
+    classification: {{ (d.classification or '') | tojson }},
+    summary: {{ (d._summary or '') | tojson }},
+    uuid: "{{ d.uuid }}",
+  };
+  {% endfor %}
+
+  let i = 0;
+  items.forEach(el => {
+    const uuid = el.dataset ? el.dataset.uuid : null;
+    const d = uuid ? datasetMap[uuid] : null;
+    if (!d) return;
+    i++;
+    const esc = s => (s || '—').replace(/\|/g, '\\|');
+    lines.push(`| ${i} | ${esc(d.name)} | ${esc(d.location)} | ${esc(d.year)} | ${esc(d.classification)} |`);
+  });
+
+  lines.push('', '---', '', '## Details', '');
+  i = 0;
+  items.forEach(el => {
+    const uuid = el.dataset ? el.dataset.uuid : null;
+    const d = uuid ? datasetMap[uuid] : null;
+    if (!d) return;
+    i++;
+    lines.push(`### ${i}. ${d.name || '—'}`);
+    lines.push(`**UUID:** \`${d.uuid}\``);
+    if (d.location) lines.push(`**Location:** ${d.location}`);
+    if (d.year)     lines.push(`**Year:** ${d.year}`);
+    if (d.classification) lines.push(`**Classification:** ${d.classification}`);
+    if (d.summary)  lines.push('', d.summary);
+    lines.push('');
+  });
+
+  if (i === 0) { alert('No visible datasets to export.'); return; }
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `lca-datasets-${now.toISOString().slice(0,10)}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function updateSelectionUI() {

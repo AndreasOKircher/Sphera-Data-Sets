@@ -30,7 +30,7 @@ app = Flask(__name__, **({"template_folder": _TEMPLATE_DIR} if _TEMPLATE_DIR els
 
 def _build_llm_client():
     provider = os.environ.get("LLM_PROVIDER", "anthropic")
-    model    = os.environ.get("LLM_MODEL", "claude-haiku-4-5")
+    model    = os.environ.get("LLM_MODEL", "claude-haiku-4-5-20251001")
     if provider == "anthropic":
         api_key = os.environ.get("ANTHROPIC_API_KEY", "")
         return create_llm_client("anthropic", api_key=api_key, model=model) if api_key else None
@@ -42,12 +42,20 @@ def _build_llm_client():
                                  base_url=base_url, tenant_id=tenant_id) if api_key else None
     return None
 
-app.config["LLM_CLIENT"] = _build_llm_client()
+app.config["LLM_CLIENT"]   = _build_llm_client()
+app.config["LLM_PROVIDER"] = os.environ.get("LLM_PROVIDER", "anthropic")
+app.config["LLM_MODEL"]    = os.environ.get("LLM_MODEL", "claude-haiku-4-5-20251001")
 
 
 @app.context_processor
 def inject_output_dir():
-    return {"output_dir": str(OUTPUT_DIR)}
+    configured = app.config["LLM_CLIENT"] is not None
+    return {
+        "output_dir":   str(OUTPUT_DIR),
+        "llm_provider": app.config["LLM_PROVIDER"],
+        "llm_model":    app.config["LLM_MODEL"],
+        "llm_configured": configured,
+    }
 
 
 def load_all() -> list[dict]:

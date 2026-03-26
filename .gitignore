@@ -18,6 +18,7 @@ dataset/input/*
 # --- Secrets ---
 .env
 cookie.txt
+cookie*.txt
 
 # --- IDE / tooling ---
 .vscode/

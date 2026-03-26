@@ -537,6 +537,8 @@ def main() -> None:
         print("[ERROR] --batch is only supported with --provider anthropic.", file=sys.stderr)
         sys.exit(1)
 
+    print(f"[LLM]  provider: {args.provider}  ·  model: {args.model}")
+
     ENRICHED_DIR.mkdir(parents=True, exist_ok=True)
     DEDUP_DIR.mkdir(parents=True, exist_ok=True)
 
