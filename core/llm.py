@@ -1,6 +1,7 @@
 """Thin LLM provider abstraction for the Sphera enrichment pipeline."""
 from typing import Protocol, runtime_checkable
 import anthropic
+import openai
 
 
 @runtime_checkable
@@ -32,6 +33,28 @@ class AnthropicLLMClient:
         return resp.content[0].text
 
 
+class VIOLLMClient:
+    """LLMClient backed by the VIO API (OpenAI-compatible).
+
+    Does NOT apply cache_control (VIO does not support it).
+    """
+
+    def __init__(self, client, model: str) -> None:
+        self._client = client
+        self._model = model
+
+    def complete(self, system: str, user: str, max_tokens: int) -> str:
+        resp = self._client.chat.completions.create(
+            model=self._model,
+            max_tokens=max_tokens,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+        )
+        return resp.choices[0].message.content
+
+
 def create_llm_client(provider: str, **kwargs) -> LLMClient:
     """Factory for LLM clients.
 
@@ -44,4 +67,14 @@ def create_llm_client(provider: str, **kwargs) -> LLMClient:
     if provider == "anthropic":
         client = anthropic.Anthropic(api_key=kwargs["api_key"])
         return AnthropicLLMClient(client=client, model=kwargs["model"])
+    if provider == "vio":
+        client = openai.OpenAI(
+            api_key=kwargs["api_key"],
+            base_url=kwargs["base_url"],
+            default_headers={
+                "useLegacyCompletionsEndpoint": "false",
+                "X-Tenant-ID": kwargs.get("tenant_id", "default_tenant"),
+            },
+        )
+        return VIOLLMClient(client=client, model=kwargs["model"])
     raise ValueError(f"unknown LLM provider: {provider!r}. Expected 'anthropic' or 'vio'.")
