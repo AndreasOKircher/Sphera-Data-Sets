@@ -52,7 +52,7 @@ class VIOLLMClient:
                 {"role": "user", "content": user},
             ],
         )
-        return resp.choices[0].message.content
+        return resp.choices[0].message.content or ""
 
 
 def create_llm_client(provider: str, **kwargs) -> LLMClient:
