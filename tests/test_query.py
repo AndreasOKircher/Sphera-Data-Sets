@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from viewer.query import build_prompt, parse_response, run_query, DEFAULT_QUERY_MODEL
+from viewer.query import build_prompt, parse_response, run_query
 
 
 # ---------------------------------------------------------------------------
@@ -123,56 +123,30 @@ def test_parse_response_empty_array():
 # run_query (mocked API)
 # ---------------------------------------------------------------------------
 
-def _make_mock_client(response_text: str):
-    mock_msg = MagicMock()
-    mock_msg.content = [MagicMock(text=response_text)]
+def _make_mock_llm_client(response_text: str):
     mock_client = MagicMock()
-    mock_client.messages.create.return_value = mock_msg
+    mock_client.complete.return_value = response_text
     return mock_client
 
 
-def test_run_query_returns_parsed_results(monkeypatch):
-    import viewer.query as qmod
-    mock_client = _make_mock_client(VALID_JSON)
-    monkeypatch.setattr(qmod.anthropic, "Anthropic", MagicMock(return_value=mock_client))
-    results = run_query("Which is steel?", [DATASET_A, DATASET_B], api_key="fake-key")
+def test_run_query_returns_parsed_results():
+    results = run_query("Which is steel?", [DATASET_A, DATASET_B],
+                        client=_make_mock_llm_client(VALID_JSON))
     assert len(results) == 2
     assert results[0]["rank"] == 1
 
 
-def test_run_query_passes_question_in_prompt(monkeypatch):
-    import viewer.query as qmod
-    mock_client = _make_mock_client(VALID_JSON)
-    monkeypatch.setattr(qmod.anthropic, "Anthropic", MagicMock(return_value=mock_client))
-    run_query("my unique question xyz", [DATASET_A], api_key="fake-key")
-    call_args = mock_client.messages.create.call_args
-    messages = call_args.kwargs["messages"]
-    assert "my unique question xyz" in messages[0]["content"]
+def test_run_query_passes_question_in_prompt():
+    mock_client = _make_mock_llm_client(VALID_JSON)
+    run_query("my unique question xyz", [DATASET_A], client=mock_client)
+    call_args = mock_client.complete.call_args
+    user_msg = call_args.args[1] if call_args.args else call_args.kwargs["user"]
+    assert "my unique question xyz" in user_msg
 
 
-def test_run_query_uses_default_model(monkeypatch):
-    import viewer.query as qmod
-    mock_client = _make_mock_client(VALID_JSON)
-    monkeypatch.setattr(qmod.anthropic, "Anthropic", MagicMock(return_value=mock_client))
-    run_query("test", [DATASET_A], api_key="fake-key")
-    call_args = mock_client.messages.create.call_args
-    assert call_args.kwargs["model"] == DEFAULT_QUERY_MODEL
-
-
-def test_run_query_uses_custom_model(monkeypatch):
-    import viewer.query as qmod
-    mock_client = _make_mock_client(VALID_JSON)
-    monkeypatch.setattr(qmod.anthropic, "Anthropic", MagicMock(return_value=mock_client))
-    run_query("test", [DATASET_A], api_key="fake-key", model="claude-sonnet-4-6")
-    call_args = mock_client.messages.create.call_args
-    assert call_args.kwargs["model"] == "claude-sonnet-4-6"
-
-
-def test_run_query_malformed_llm_response_returns_empty(monkeypatch):
-    import viewer.query as qmod
-    mock_client = _make_mock_client("Sorry, I cannot answer that.")
-    monkeypatch.setattr(qmod.anthropic, "Anthropic", MagicMock(return_value=mock_client))
-    results = run_query("test", [DATASET_A], api_key="fake-key")
+def test_run_query_malformed_llm_response_returns_empty():
+    results = run_query("test", [DATASET_A],
+                        client=_make_mock_llm_client("Sorry, I cannot answer."))
     assert results == []
 
 
@@ -184,15 +158,14 @@ import pytest
 
 @pytest.fixture
 def flask_client(monkeypatch):
-    """Flask test client with API key configured and run_query mocked."""
+    """Flask test client with LLM client configured and run_query mocked."""
     import viewer.app as app_mod
-    app_mod.app.config["ANTHROPIC_API_KEY"] = "fake-key"
+    app_mod.app.config["LLM_CLIENT"] = MagicMock()
     app_mod.app.config["TESTING"] = True
 
-    # Patch at definition site — app.py uses local import inside function body
     monkeypatch.setattr(
         "viewer.query.run_query",
-        lambda question, datasets, api_key, model, fields=None: [
+        lambda question, datasets, client, fields=None: [
             {"uuid": d["uuid"], "name": d.get("name_base", ""), "rank": i + 1,
              "relevance_score": 5 - i, "comment": "test comment"}
             for i, d in enumerate(datasets)
@@ -235,17 +208,13 @@ def test_query_route_no_matching_datasets(flask_client):
 
 def test_query_route_no_api_key(monkeypatch):
     import viewer.app as app_mod
-    original_key = app_mod.app.config.get("ANTHROPIC_API_KEY", "")
-    app_mod.app.config["ANTHROPIC_API_KEY"] = ""
+    app_mod.app.config["LLM_CLIENT"] = None
     app_mod.app.config["TESTING"] = True
-    try:
-        with app_mod.app.test_client() as c:
-            resp = c.post("/query",
-                json={"question": "test", "uuids": ["aaa-111"]},
-                content_type="application/json")
-        assert resp.status_code == 503
-    finally:
-        app_mod.app.config["ANTHROPIC_API_KEY"] = original_key
+    with app_mod.app.test_client() as c:
+        resp = c.post("/query",
+            json={"question": "test", "uuids": ["aaa-111"]},
+            content_type="application/json")
+    assert resp.status_code == 503
 
 
 def test_query_route_success(flask_client):

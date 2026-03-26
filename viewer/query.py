@@ -1,7 +1,7 @@
 """LLM query engine: rank datasets against a user question."""
 
 import json
-import anthropic
+from core.llm import LLMClient
 
 QUERY_SYSTEM = (
     "You are an LCA (Life Cycle Assessment) data analyst. "
@@ -16,8 +16,6 @@ QUERY_SYSTEM = (
     '  "comment": 1-2 sentence explanation of relevance to the question\n'
     "Return ONLY the JSON array, no other text, no markdown code fences."
 )
-
-DEFAULT_QUERY_MODEL = "claude-haiku-4-5"
 
 _ALL_FIELDS = ["classification", "location", "year", "description"]
 
@@ -90,17 +88,32 @@ def parse_response(text: str) -> list[dict]:
 def run_query(
     question: str,
     datasets: list[dict],
-    api_key: str,
-    model: str = DEFAULT_QUERY_MODEL,
+    client: LLMClient,
     fields: list[str] | None = None,
 ) -> list[dict]:
-    """Call the Claude API and return ranked dataset results."""
-    client = anthropic.Anthropic(api_key=api_key)
+    """Call the LLM and return ranked dataset results."""
+    results, _ = run_query_with_usage(question, datasets, client=client, fields=fields)
+    return results
+
+
+def run_query_with_usage(
+    question: str,
+    datasets: list[dict],
+    client: LLMClient,
+    fields: list[str] | None = None,
+) -> tuple[list[dict], dict]:
+    """Call the LLM and return (ranked results, usage dict).
+
+    Usage dict keys: input_tokens, output_tokens,
+    cache_creation_input_tokens, cache_read_input_tokens.
+    All values are zero (usage not exposed through LLMClient abstraction).
+    """
     user_message = build_prompt(question, datasets, fields=fields)
-    resp = client.messages.create(
-        model=model,
-        max_tokens=4000,
-        system=[{"type": "text", "text": QUERY_SYSTEM, "cache_control": {"type": "ephemeral"}}],
-        messages=[{"role": "user", "content": user_message}],
-    )
-    return parse_response(resp.content[0].text)
+    text = client.complete(QUERY_SYSTEM, user_message, 4000)
+    usage = {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+    }
+    return parse_response(text), usage

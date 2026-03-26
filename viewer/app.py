@@ -28,6 +28,7 @@ ENRICHED_DIR = _BASE / "dataset" / "enriched"
 app = Flask(__name__, **({"template_folder": _TEMPLATE_DIR} if _TEMPLATE_DIR else {}))
 
 app.config["ANTHROPIC_API_KEY"] = os.environ.get("ANTHROPIC_API_KEY", "")
+app.config["LLM_CLIENT"] = None  # set at startup by caller or __main__
 
 
 @app.context_processor
@@ -94,7 +95,6 @@ def dataset_detail(uuid):
 
 @app.route("/query", methods=["POST"])
 def query():
-    from viewer.query import run_query
     body = request.get_json(silent=True) or {}
     question = body.get("question", "").strip()
     uuids = body.get("uuids")
@@ -104,9 +104,9 @@ def query():
     if not uuids:
         return jsonify({"error": "uuids is required"}), 400
 
-    api_key = app.config.get("ANTHROPIC_API_KEY", "")
-    if not api_key:
-        return jsonify({"error": "ANTHROPIC_API_KEY not configured"}), 503
+    llm_client = app.config.get("LLM_CLIENT")
+    if llm_client is None:
+        return jsonify({"error": "LLM client not configured"}), 503
 
     all_datasets = load_all()
     uuid_set = set(uuids)
@@ -114,11 +114,11 @@ def query():
     if not selected:
         return jsonify({"error": "No matching datasets found for provided uuids"}), 400
 
-    model = body.get("model", app.config.get("QUERY_MODEL", "claude-haiku-4-5"))
     fields = body.get("fields") or None
 
     try:
-        results = run_query(question, selected, api_key=api_key, model=model, fields=fields)
+        from viewer.query import run_query
+        results = run_query(question, selected, client=llm_client, fields=fields)
         return jsonify({"results": results})
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
