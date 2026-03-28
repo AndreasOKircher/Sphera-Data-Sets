@@ -11,6 +11,9 @@
 dataset/output/
 # Enriched: sidecar JSON files from Module 4 LLM enrichment
 dataset/enriched/
+dataset/dedup/
+dataset/jsonl/
+dataset/combined/
 # Input: exclude everything except .txt URL lists
 dataset/input/*
 !dataset/input/*.txt

@@ -1,4 +1,4 @@
-"""CLI for enriching Sphera LCA datasets using the Claude API."""
+"""CLI for enriching Sphera LCA datasets using the Claude or VIO API ."""
 
 # Standard library
 import argparse
@@ -32,6 +32,11 @@ DEDUP_DIR    = Path(__file__).parent / "dataset" / "dedup"
 TEXT_CACHE_FILE = DEDUP_DIR / "text_cache.json"
 
 DEFAULT_MODEL   = "claude-haiku-4-5-20251001"
+
+MODEL_FROM_ENV = os.environ.get("LLM_MODEL", DEFAULT_MODEL)
+
+
+
 DEFAULT_WORKERS = 4
 BATCH_REQUEST_LIMIT = 10_000  # Anthropic max requests per batch (each dataset = 2)
 
@@ -510,9 +515,9 @@ def main() -> None:
     group.add_argument("--all", action="store_true", help="Enrich all datasets")
     parser.add_argument("--force",     action="store_true", help="Re-enrich already enriched datasets")
     parser.add_argument("--batch",     action="store_true", help="Use Anthropic batch API (async, ~50%% cheaper, no parallel workers)")
-    parser.add_argument("--model",     default=DEFAULT_MODEL, help=f"Claude model ID (default: {DEFAULT_MODEL})")
     parser.add_argument("--threshold", type=float, default=6.0, help="Max allowed word/char count deviation in %% (default: 6.0)")
     parser.add_argument("--workers",   type=int, default=DEFAULT_WORKERS, help=f"Parallel dataset workers (default: {DEFAULT_WORKERS})")
+    parser.add_argument(    "--model",    default=MODEL_FROM_ENV,    help=f"LLM model ID (default: {MODEL_FROM_ENV})",)
     parser.add_argument("--provider", default="anthropic", choices=["anthropic", "vio"],
                         help="LLM provider (default: anthropic)")
     args = parser.parse_args()
