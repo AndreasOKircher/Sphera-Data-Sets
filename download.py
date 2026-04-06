@@ -6,6 +6,7 @@ from pathlib import Path
 from core.downloader import download_xml, DownloadError
 from core.exporter import export_dataset
 from core.parser import parse_dataset
+from core.xls_manifest import load_manifest, get_uuids_for_databases, ManifestEntry
 
 DEFAULT_OUTPUT = Path("dataset/output")
 
@@ -31,11 +32,46 @@ def process_url(url: str, output_dir: Path, headers: dict | None = None) -> bool
         return False
 
 
+def process_url_from_manifest(
+    entry: ManifestEntry,
+    output_dir: Path,
+    headers: dict | None = None,
+) -> str:
+    """Download and export one manifest entry. Returns 'ok', 'skip', or 'fail'."""
+    json_path = output_dir / f"{entry.uuid}.json"
+    if json_path.exists():
+        print(f"[SKIP] {entry.uuid} — already exists")
+        return "skip"
+    try:
+        xml_bytes = download_xml(entry.source_url, headers=headers)
+        data = parse_dataset(xml_bytes)
+        # Inject manifest-sourced fields into the data model
+        data["source_url"] = entry.source_url
+        data["xls_dataset_type"] = entry.xls_dataset_type
+        data["databases"] = entry.databases
+        export_dataset(data, xml_bytes, output_dir)
+        print(f"[OK]   {entry.uuid} — {data.get('name_base', '')}")
+        return "ok"
+    except DownloadError as e:
+        print(f"[FAIL] {entry.uuid} — {e}", file=sys.stderr)
+        return "fail"
+    except Exception as e:
+        print(f"[FAIL] {entry.uuid} — unexpected error: {e}", file=sys.stderr)
+        return "fail"
+
+
 def main():
     parser = argparse.ArgumentParser(description="Download and export Sphera LCA datasets.")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--url", help="Single dataset URL")
     group.add_argument("--urls", help="Path to file with one URL per line")
+    group.add_argument("--xls", help="Path to Sphera XLS manifest file")
+    parser.add_argument(
+        "--databases",
+        nargs="+",
+        default=None,
+        help='Filter to specific databases (e.g. "Professional database 2026")',
+    )
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT), help="Output directory")
     parser.add_argument("--cookie", help="Cookie header value for authenticated requests")
     parser.add_argument("--cookie-file", help="Path to a text file containing the cookie value")
@@ -57,6 +93,24 @@ def main():
                 "Chrome/134.0.0.0 Safari/537.36"
             ),
         }
+
+    if args.xls:
+        manifest = load_manifest(args.xls)
+        if args.databases:
+            uuids = get_uuids_for_databases(manifest, args.databases)
+            entries = [manifest[u] for u in uuids if u in manifest]
+        else:
+            entries = list(manifest.values())
+
+        counts = {"ok": 0, "skip": 0, "fail": 0}
+        for entry in entries:
+            result = process_url_from_manifest(entry, output_dir, headers=headers)
+            counts[result] += 1
+
+        print(f"\nDone. {counts['ok']} ok · {counts['skip']} skipped · {counts['fail']} failed.")
+        if counts["fail"]:
+            sys.exit(1)
+        return
 
     urls = [args.url] if args.url else Path(args.urls).read_text().splitlines()
     urls = [u.strip() for u in urls if u.strip()]
