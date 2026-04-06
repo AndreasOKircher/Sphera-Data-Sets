@@ -1,7 +1,7 @@
 """LLM query engine: rank datasets against a user question."""
 
 import json
-import anthropic
+from core.llm import LLMClient
 
 QUERY_SYSTEM = (
     "You are an LCA (Life Cycle Assessment) data analyst. "
@@ -17,8 +17,6 @@ QUERY_SYSTEM = (
     "Return ONLY the JSON array, no other text, no markdown code fences."
 )
 
-DEFAULT_QUERY_MODEL = "claude-haiku-4-5"
-
 _ALL_FIELDS = ["classification", "location", "year", "description"]
 
 
@@ -26,6 +24,7 @@ def build_prompt(
     question: str,
     datasets: list[dict],
     fields: list[str] | None = None,
+    history: list[dict] | None = None,
 ) -> str:
     """Build the user message for the LLM query.
 
@@ -40,12 +39,27 @@ def build_prompt(
         UUID and name are always included regardless of this setting.
         Valid values: "classification", "location", "year",
                       "description", "synonyms", "dataset_type".
+    history : list of {"role": "user"|"assistant", "content": str}
+              Prior conversation turns prepended before the current question.
     """
     if fields is None:
         fields = list(_ALL_FIELDS)
     field_set = set(fields)
 
-    lines = [f"Question: {question}\n", "Datasets:"]
+    lines = []
+
+    # Prepend conversation history if provided
+    if history:
+        lines.append("Prior conversation:")
+        for turn in history:
+            role = turn.get("role", "user").capitalize()
+            content = turn.get("content", "")
+            lines.append(f"{role}: {content}")
+        lines.append("")  # blank separator
+
+    lines.append(f"Question: {question}\n")
+    lines.append("Datasets:")
+
     for d in datasets:
         entry_lines = [
             "\n---",
@@ -66,6 +80,7 @@ def build_prompt(
             desc = d.get("_summary") or (d.get("technology_description") or "")[:500]
             entry_lines.append(f"Description: {desc}")
         lines.append("\n".join(entry_lines))
+
     return "\n".join(lines)
 
 
@@ -90,17 +105,35 @@ def parse_response(text: str) -> list[dict]:
 def run_query(
     question: str,
     datasets: list[dict],
-    api_key: str,
-    model: str = DEFAULT_QUERY_MODEL,
+    client: LLMClient,
     fields: list[str] | None = None,
+    history: list[dict] | None = None,
 ) -> list[dict]:
-    """Call the Claude API and return ranked dataset results."""
-    client = anthropic.Anthropic(api_key=api_key)
-    user_message = build_prompt(question, datasets, fields=fields)
-    resp = client.messages.create(
-        model=model,
-        max_tokens=4000,
-        system=[{"type": "text", "text": QUERY_SYSTEM, "cache_control": {"type": "ephemeral"}}],
-        messages=[{"role": "user", "content": user_message}],
-    )
-    return parse_response(resp.content[0].text)
+    """Call the LLM and return ranked dataset results."""
+    results, _ = run_query_with_usage(question, datasets, client=client,
+                                      fields=fields, history=history)
+    return results
+
+
+def run_query_with_usage(
+    question: str,
+    datasets: list[dict],
+    client: LLMClient,
+    fields: list[str] | None = None,
+    history: list[dict] | None = None,
+) -> tuple[list[dict], dict]:
+    """Call the LLM and return (ranked results, usage dict).
+
+    Usage dict keys: input_tokens, output_tokens,
+    cache_creation_input_tokens, cache_read_input_tokens.
+    All values are zero (usage not exposed through LLMClient abstraction).
+    """
+    user_message = build_prompt(question, datasets, fields=fields, history=history)
+    text = client.complete(QUERY_SYSTEM, user_message, 4000)
+    usage = {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+    }
+    return parse_response(text), usage

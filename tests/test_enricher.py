@@ -252,30 +252,25 @@ class TestVerifyCounts:
 # ---------------------------------------------------------------------------
 
 class TestEnrichDataset:
-    def test_enrich_dataset_missing_field_returns_none(self):
+    def _make_mock(self, side_effects):
         mock_client = MagicMock()
-        result = enrich_dataset({"uuid": "abc"}, mock_client, "claude-haiku-4-5-20251001")
+        mock_client.complete.side_effect = side_effects
+        return mock_client
+
+    def test_enrich_dataset_missing_field_returns_none(self):
+        result = enrich_dataset({"uuid": "abc"}, MagicMock())
         assert result is None
 
     def test_enrich_dataset_empty_field_returns_none(self):
-        mock_client = MagicMock()
         result = enrich_dataset(
-            {"uuid": "abc", "technology_description": ""},
-            mock_client,
-            "claude-haiku-4-5-20251001",
+            {"uuid": "abc", "technology_description": ""}, MagicMock()
         )
         assert result is None
 
     def test_enrich_dataset_success(self):
-        mock_client = MagicMock()
-        # Formatted text uses bold (**) which strips away, so word/char counts
-        # stay identical to the original and verify_counts returns ok=True.
-        mock_client.messages.create.side_effect = [
-            MagicMock(content=[MagicMock(text="A plain summary.")]),
-            MagicMock(content=[MagicMock(text="**The** original text.")]),
-        ]
+        mock_client = self._make_mock(["A plain summary.", "**The** original text."])
         data = {"uuid": "test-uuid", "technology_description": "The original text."}
-        result = enrich_dataset(data, mock_client, "claude-haiku-4-5-20251001")
+        result = enrich_dataset(data, mock_client)
         assert result is not None
         assert result["uuid"] == "test-uuid"
         assert result["technology_description_summary"] == "A plain summary."
@@ -284,24 +279,12 @@ class TestEnrichDataset:
         assert len(result) == 12
 
     def test_enrich_dataset_fail_on_threshold(self):
-        mock_client = MagicMock()
-        # Original: 3 words. Formatted: 100 words — way above 2% threshold.
-        original_text = "one two three"
-        bloated_formatted = " ".join(["word"] * 100)
-        mock_client.messages.create.side_effect = [
-            MagicMock(content=[MagicMock(text="A plain summary.")]),
-            MagicMock(content=[MagicMock(text=bloated_formatted)]),
-        ]
-        data = {"uuid": "abc", "technology_description": original_text}
-        result = enrich_dataset(data, mock_client, "claude-haiku-4-5-20251001")
+        bloated = " ".join(["word"] * 100)
+        mock_client = self._make_mock(["A plain summary.", bloated])
+        result = enrich_dataset({"uuid": "abc", "technology_description": "one two three"}, mock_client)
         assert result is None
 
-    def test_enrich_dataset_calls_api_twice(self):
-        mock_client = MagicMock()
-        mock_client.messages.create.side_effect = [
-            MagicMock(content=[MagicMock(text="A plain summary.")]),
-            MagicMock(content=[MagicMock(text="**The** original text.")]),
-        ]
-        data = {"uuid": "test-uuid", "technology_description": "The original text."}
-        enrich_dataset(data, mock_client, "claude-haiku-4-5-20251001")
-        assert mock_client.messages.create.call_count == 2
+    def test_enrich_dataset_calls_complete_twice(self):
+        mock_client = self._make_mock(["A plain summary.", "**The** original text."])
+        enrich_dataset({"uuid": "test-uuid", "technology_description": "The original text."}, mock_client)
+        assert mock_client.complete.call_count == 2

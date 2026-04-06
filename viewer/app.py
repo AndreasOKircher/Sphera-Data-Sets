@@ -11,6 +11,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from viewer.sections import SECTIONS, DEFAULT_OPEN
+from core.llm import create_llm_client
+from core.chroma_store import query_similar
 
 # When frozen by PyInstaller:
 #   - dataset/ lives next to the .exe  (user data, not bundled)
@@ -24,15 +26,38 @@ else:
 
 OUTPUT_DIR   = _BASE / "dataset" / "output"
 ENRICHED_DIR = _BASE / "dataset" / "enriched"
+CHROMA_DIR   = _BASE / "dataset" / "chroma"
 
 app = Flask(__name__, **({"template_folder": _TEMPLATE_DIR} if _TEMPLATE_DIR else {}))
 
-app.config["ANTHROPIC_API_KEY"] = os.environ.get("ANTHROPIC_API_KEY", "")
+def _build_llm_client():
+    provider = os.environ.get("LLM_PROVIDER", "anthropic")
+    model    = os.environ.get("LLM_MODEL", "claude-haiku-4-5-20251001")
+    if provider == "anthropic":
+        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+        return create_llm_client("anthropic", api_key=api_key, model=model) if api_key else None
+    if provider == "vio":
+        api_key   = os.environ.get("API_TOKEN", "")
+        base_url  = os.environ.get("VIO_BASE_URL", "https://vio.automotive-wan.com:446")
+        tenant_id = os.environ.get("VIO_TENANT_ID", "default_tenant")
+        return create_llm_client("vio", api_key=api_key, model=model,
+                                 base_url=base_url, tenant_id=tenant_id) if api_key else None
+    return None
+
+app.config["LLM_CLIENT"]   = _build_llm_client()
+app.config["LLM_PROVIDER"] = os.environ.get("LLM_PROVIDER", "anthropic")
+app.config["LLM_MODEL"]    = os.environ.get("LLM_MODEL", "claude-haiku-4-5-20251001")
 
 
 @app.context_processor
 def inject_output_dir():
-    return {"output_dir": str(OUTPUT_DIR)}
+    configured = app.config["LLM_CLIENT"] is not None
+    return {
+        "output_dir":   str(OUTPUT_DIR),
+        "llm_provider": app.config["LLM_PROVIDER"],
+        "llm_model":    app.config["LLM_MODEL"],
+        "llm_configured": configured,
+    }
 
 
 def load_all() -> list[dict]:
@@ -94,7 +119,6 @@ def dataset_detail(uuid):
 
 @app.route("/query", methods=["POST"])
 def query():
-    from viewer.query import run_query
     body = request.get_json(silent=True) or {}
     question = body.get("question", "").strip()
     uuids = body.get("uuids")
@@ -104,9 +128,9 @@ def query():
     if not uuids:
         return jsonify({"error": "uuids is required"}), 400
 
-    api_key = app.config.get("ANTHROPIC_API_KEY", "")
-    if not api_key:
-        return jsonify({"error": "ANTHROPIC_API_KEY not configured"}), 503
+    llm_client = app.config.get("LLM_CLIENT")
+    if llm_client is None:
+        return jsonify({"error": "LLM client not configured"}), 503
 
     all_datasets = load_all()
     uuid_set = set(uuids)
@@ -114,11 +138,62 @@ def query():
     if not selected:
         return jsonify({"error": "No matching datasets found for provided uuids"}), 400
 
-    model = body.get("model", app.config.get("QUERY_MODEL", "claude-haiku-4-5"))
     fields = body.get("fields") or None
 
     try:
-        results = run_query(question, selected, api_key=api_key, model=model, fields=fields)
+        from viewer.query import run_query
+        results = run_query(question, selected, client=llm_client, fields=fields)
+        return jsonify({"results": results})
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@app.route("/search", methods=["POST"])
+def search():
+    body = request.get_json(silent=True) or {}
+    question = body.get("question", "").strip()
+    if not question:
+        return jsonify({"error": "question is required"}), 400
+
+    filters = body.get("filters") or None
+
+    results = query_similar(
+        question,
+        chroma_path=CHROMA_DIR,
+        n_results=20,
+        where=filters,
+    )
+    uuids = [r["uuid"] for r in results]
+    return jsonify({"uuids": uuids, "matches": results})
+
+
+@app.route("/chat", methods=["POST"])
+def chat():
+    body = request.get_json(silent=True) or {}
+    question = body.get("question", "").strip()
+    uuids = body.get("uuids")
+    history = body.get("history") or []
+
+    if not question:
+        return jsonify({"error": "question is required"}), 400
+    if not uuids:
+        return jsonify({"error": "uuids is required"}), 400
+
+    llm_client = app.config.get("LLM_CLIENT")
+    if llm_client is None:
+        return jsonify({"error": "LLM client not configured"}), 503
+
+    all_datasets = load_all()
+    uuid_set = set(uuids)
+    selected = [d for d in all_datasets if d.get("uuid") in uuid_set]
+    if not selected:
+        return jsonify({"error": "No matching datasets found"}), 400
+
+    fields = body.get("fields") or None
+    try:
+        from viewer.query import run_query
+        results = run_query(question, selected, client=llm_client,
+                            fields=fields, history=history)
         return jsonify({"results": results})
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500

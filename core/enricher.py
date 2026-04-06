@@ -1,8 +1,8 @@
 """Pure text utility functions for LCA dataset enrichment."""
 
-import anthropic
 from datetime import datetime, timezone
 from typing import TypedDict
+from core.llm import LLMClient
 
 _STRIP_CHARS = str.maketrans("", "", "#*_`")
 
@@ -129,7 +129,7 @@ FORMAT_SYSTEM = (
 )
 
 
-def enrich_dataset(data: dict, client: anthropic.Anthropic, model: str) -> dict | None:
+def enrich_dataset(data: dict, client: LLMClient) -> dict | None:
     """Enrich a single dataset record with a summary and formatted description.
 
     Parameters
@@ -138,9 +138,7 @@ def enrich_dataset(data: dict, client: anthropic.Anthropic, model: str) -> dict 
         A dataset record dict. Must contain ``uuid`` and
         ``technology_description``.
     client:
-        An ``anthropic.Anthropic`` client (or compatible mock).
-    model:
-        The Claude model identifier to use for both API calls.
+        An ``LLMClient`` implementation.
 
     Returns
     -------
@@ -151,21 +149,9 @@ def enrich_dataset(data: dict, client: anthropic.Anthropic, model: str) -> dict 
     if not technology_description:
         return None
 
-    resp = client.messages.create(
-        model=model,
-        max_tokens=300,
-        system=SUMMARY_SYSTEM,
-        messages=[{"role": "user", "content": technology_description}],
-    )
-    summary = resp.content[0].text
+    summary = client.complete(SUMMARY_SYSTEM, technology_description, 300)
 
-    resp = client.messages.create(
-        model=model,
-        max_tokens=16000,
-        system=FORMAT_SYSTEM,
-        messages=[{"role": "user", "content": technology_description}],
-    )
-    formatted = resp.content[0].text
+    formatted = client.complete(FORMAT_SYSTEM, technology_description, 16000)
 
     counts = verify_counts(technology_description, formatted)
     if not counts["ok"]:

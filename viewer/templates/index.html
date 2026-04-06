@@ -34,15 +34,41 @@
   </div>
 </div>
 
+<div style="background:#fff; border:1px solid #ddd; border-radius:8px; padding:14px 16px; margin-bottom:16px;">
+  <h6 style="font-size:13px; font-weight:bold; margin:0 0 8px 0;">Semantic Search</h6>
+  <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    <input id="semantic-input" type="text" class="form-control"
+           style="flex:1; min-width:240px; padding:6px 12px; border:1px solid #ccc; border-radius:4px; font-size:14px;"
+           placeholder="e.g. aluminium with post-consumer recycling content">
+    <select id="filter-type"
+            style="padding:6px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
+      <option value="">All dataset types</option>
+      {% for ds_type in datasets | map(attribute='xls_dataset_type') | unique | sort %}
+        {% if ds_type %}<option value="{{ ds_type }}">{{ ds_type }}</option>{% endif %}
+      {% endfor %}
+    </select>
+    <button onclick="doSemanticSearch()"
+            style="padding:6px 14px; border:none; border-radius:4px; background:#0057b8; color:#fff; cursor:pointer; font-size:13px; font-weight:bold;">
+      Search
+    </button>
+  </div>
+  <div id="semantic-results" style="margin-top:8px; font-size:13px; color:#666;"></div>
+</div>
+
 {% if not datasets %}
   <p style="color:#666;">No datasets found in <code>dataset/output/</code>. Run the downloader first.</p>
 {% else %}
   <div id="results-panel" style="display:none; margin-bottom:20px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
       <h2 style="font-size:16px; font-weight:bold;" id="results-question-label"></h2>
-      <button onclick="dismissResults()"
-        style="padding:3px 10px; font-size:12px; border:1px solid #ccc; border-radius:4px;
-               background:#fff; cursor:pointer;">✕ Dismiss</button>
+      <div style="display:flex; gap:6px;">
+        <button id="btn-export-md" onclick="exportMarkdown()" style="display:none;
+          padding:3px 10px; font-size:12px; border:1px solid #0057b8; border-radius:4px;
+          background:#fff; color:#0057b8; cursor:pointer;">⬇ Export .md</button>
+        <button onclick="dismissResults()"
+          style="padding:3px 10px; font-size:12px; border:1px solid #ccc; border-radius:4px;
+                 background:#fff; cursor:pointer;">✕ Dismiss</button>
+      </div>
     </div>
     <div id="results-error" style="color:#c00; font-size:14px; display:none;"></div>
     <table id="results-table" style="width:100%; border-collapse:collapse; background:#fff;
@@ -57,6 +83,7 @@
       </thead>
       <tbody id="results-tbody"></tbody>
     </table>
+    <div id="results-usage" style="display:none; margin-top:6px; font-size:12px; color:#888;"></div>
   </div>
 
   <!-- Card view -->
@@ -116,8 +143,9 @@
           <th onclick="sortTable(2,false)" style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:80px;">Location <span class="si">⇅</span></th>
           <th onclick="sortTable(3,true)"  style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:55px;">Year <span class="si">⇅</span></th>
           <th onclick="sortTable(4,false)" style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:120px;">Type <span class="si">⇅</span></th>
-          <th onclick="sortTable(5,false)" style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:110px;">DQI <span class="si">⇅</span></th>
-          <th onclick="sortTable(6,true)"  style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:75px;">Supply <span class="si">⇅</span></th>
+          <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:110px;">DB Type<span class="si" style="display:none;"></span></th>
+          <th onclick="sortTable(6,false)" style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:110px;">DQI <span class="si">⇅</span></th>
+          <th onclick="sortTable(7,true)"  style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:75px;">Supply <span class="si">⇅</span></th>
         </tr>
       </thead>
       <tbody>
@@ -141,6 +169,7 @@
           <td style="padding:8px 12px;">{{ d.location or "—" }}</td>
           <td style="padding:8px 12px;">{{ d.reference_year or "—" }}</td>
           <td style="padding:8px 12px;">{{ d.dataset_type or "—" }}</td>
+          <td style="padding:8px 12px;">{{ d.xls_dataset_type or "—" }}</td>
           <td style="padding:8px 12px;">
             {% if d.dqi_overall_quality %}
               {% set dqi_class = "badge-dqi-very-good" if "very" in (d.dqi_overall_quality | lower) else "badge-dqi-good" if "good" in (d.dqi_overall_quality | lower) else "badge-dqi-other" %}
@@ -159,7 +188,12 @@
     </table>
   </div>
 
-  <p id="count-label" style="margin-top:20px; color:#666; font-size:13px;">{{ datasets | length }} datasets loaded</p>
+  <div style="margin-top:20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+    <p id="count-label" style="color:#666; font-size:13px; margin:0;">{{ datasets | length }} datasets loaded</p>
+    <button onclick="exportVisibleMd()"
+      style="padding:3px 10px; font-size:12px; border:1px solid #0057b8; border-radius:4px;
+             background:#fff; color:#0057b8; cursor:pointer;">⬇ Export visible as .md</button>
+  </div>
 {% endif %}
 
 <style>
@@ -167,6 +201,37 @@
   #view-list th:hover { background: #e8eeff; }
 </style>
 <script>
+async function doSemanticSearch() {
+  const question = document.getElementById("semantic-input").value.trim();
+  if (!question) return;
+  const dsType = document.getElementById("filter-type").value;
+  const body = { question };
+  if (dsType) body.filters = { xls_dataset_type: dsType };
+
+  document.getElementById("semantic-results").textContent = "Searching…";
+  const resp = await fetch("/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await resp.json();
+  if (data.error) {
+    document.getElementById("semantic-results").textContent = "Error: " + data.error;
+    return;
+  }
+  const uuids = new Set(data.uuids);
+  // Highlight matching rows and cards
+  document.querySelectorAll("#view-list tbody tr").forEach(row => {
+    row.style.background = uuids.has(row.dataset.uuid) ? "#fffde7" : "";
+  });
+  document.querySelectorAll("#view-cards > a").forEach(card => {
+    const uuid = card.dataset.uuid;
+    card.querySelector("div").style.borderColor = uuids.has(uuid) ? "#f59e0b" : "#ddd";
+  });
+  document.getElementById("semantic-results").textContent =
+    `${data.uuids.length} matching datasets highlighted.`;
+}
+
 let currentView = 'cards';
 let sortCol = -1;
 let sortAsc = true;
@@ -282,6 +347,46 @@ function filterAll() {
 })();
 
 const selectedUUIDs = new Set();
+let _lastQuestion = '';
+let _lastResults = [];
+
+function exportMarkdown() {
+  const now = new Date();
+  const ts = now.toISOString().slice(0, 16).replace('T', ' ');
+  const lines = [
+    '# LCA Dataset Query Results',
+    '',
+    `**Question:** ${_lastQuestion}`,
+    '',
+    `_Generated: ${ts}_`,
+    '',
+    '---',
+    '',
+    '| Rank | Dataset | Score | Comment |',
+    '|------|---------|-------|---------|',
+  ];
+  _lastResults.forEach(r => {
+    const name = (r.name || r.uuid).replace(/\|/g, '\\|');
+    const comment = (r.comment || '').replace(/\|/g, '\\|');
+    lines.push(`| ${r.rank} | ${name} | ${r.relevance_score}/5 | ${comment} |`);
+  });
+  lines.push('', '---', '', '## Details', '');
+  _lastResults.forEach(r => {
+    const score = Number(r.relevance_score) || 0;
+    lines.push(`### #${r.rank} — ${r.name || r.uuid} (${score}/5)`);
+    lines.push(`**UUID:** \`${r.uuid}\``);
+    lines.push('');
+    lines.push(r.comment || '');
+    lines.push('');
+  });
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `lca-query-${now.toISOString().slice(0,10)}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function toggleSelect(uuid, checked) {
   if (checked) { selectedUUIDs.add(uuid); } else { selectedUUIDs.delete(uuid); }
@@ -324,10 +429,15 @@ async function submitQuery() {
   const tableEl = document.getElementById('results-table');
   const tbody = document.getElementById('results-tbody');
   const label = document.getElementById('results-question-label');
+  const usageEl = document.getElementById('results-usage');
 
+  _lastQuestion = question;
+  _lastResults = [];
+  document.getElementById('btn-export-md').style.display = 'none';
   label.textContent = `Q: ${question}`;
   errorEl.style.display = 'none';
   tableEl.style.display = 'none';
+  usageEl.style.display = 'none';
   tbody.innerHTML = '';
   panel.style.display = 'block';
   panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -352,21 +462,40 @@ async function submitQuery() {
         const scoreBg   = score >= 4 ? '#d1fae5' : score >= 2 ? '#fef3c7' : '#e5e7eb';
         const tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid #f0f0f0';
-        tr.innerHTML = `
-          <td style="padding:8px 12px; text-align:center; font-weight:bold;">${r.rank ?? '—'}</td>
-          <td style="padding:8px 12px;">
-            <a href="/dataset/${r.uuid}" style="color:#0057b8; font-weight:bold;">${r.name || r.uuid}</a>
-          </td>
-          <td style="padding:8px 12px; text-align:center;">
-            <span style="display:inline-block; padding:2px 8px; border-radius:4px;
-                         background:${scoreBg}; color:${scoreColor}; font-weight:bold; font-size:12px;">
-              ${score}/5
-            </span>
-          </td>
-          <td style="padding:8px 12px; color:#444;">${r.comment || ''}</td>`;
+        const tdRank = document.createElement('td');
+        tdRank.style.cssText = 'padding:8px 12px; text-align:center; font-weight:bold;';
+        tdRank.textContent = String(r.rank ?? '—');
+        const a = document.createElement('a');
+        a.href = `/dataset/${encodeURIComponent(r.uuid)}`;
+        a.style.cssText = 'color:#0057b8; font-weight:bold;';
+        a.textContent = r.name || r.uuid;
+        const tdName = document.createElement('td');
+        tdName.style.cssText = 'padding:8px 12px;';
+        tdName.appendChild(a);
+        const span = document.createElement('span');
+        span.style.cssText = `display:inline-block; padding:2px 8px; border-radius:4px;
+                     background:${scoreBg}; color:${scoreColor}; font-weight:bold; font-size:12px;`;
+        span.textContent = `${score}/5`;
+        const tdScore = document.createElement('td');
+        tdScore.style.cssText = 'padding:8px 12px; text-align:center;';
+        tdScore.appendChild(span);
+        const tdComment = document.createElement('td');
+        tdComment.style.cssText = 'padding:8px 12px; color:#444;';
+        tdComment.textContent = r.comment || '';
+        tr.append(tdRank, tdName, tdScore, tdComment);
         tbody.appendChild(tr);
       });
+      _lastResults = data.results;
+      document.getElementById('btn-export-md').style.display = '';
       tableEl.style.display = '';
+      if (data.usage) {
+        const u = data.usage;
+        let msg = `Tokens: ${u.input_tokens.toLocaleString()} in · ${u.output_tokens.toLocaleString()} out`;
+        if (u.cache_read_input_tokens) msg += ` · ${u.cache_read_input_tokens.toLocaleString()} from cache`;
+        if (u.cache_creation_input_tokens) msg += ` · ${u.cache_creation_input_tokens.toLocaleString()} written to cache`;
+        usageEl.textContent = msg;
+        usageEl.style.display = '';
+      }
     }
   } catch (err) {
     errorEl.textContent = `Request failed: ${err.message}`;
@@ -381,12 +510,163 @@ function dismissResults() {
   document.getElementById('results-panel').style.display = 'none';
 }
 
+function exportVisibleMd() {
+  const now = new Date();
+  const ts = now.toISOString().slice(0, 16).replace('T', ' ');
+  const q1 = document.getElementById('search').value.trim();
+  const q2 = document.getElementById('search-kw').value.trim();
+  const filterDesc = [q1 && `name: "${q1}"`, q2 && `keyword: "${q2}"`].filter(Boolean).join(', ');
+
+  const lines = [
+    '# LCA Datasets Export',
+    '',
+    filterDesc ? `**Filter:** ${filterDesc}` : '**Filter:** none (all datasets)',
+    '',
+    `_Generated: ${ts}_`,
+    '',
+    '---',
+    '',
+    '| # | Name | Location | Year | Classification |',
+    '|---|------|----------|------|----------------|',
+  ];
+
+  // Collect visible items from whichever view is active
+  const items = [];
+  document.querySelectorAll('#view-cards > a').forEach(el => {
+    if (el.style.display !== 'none') items.push(el);
+  });
+  // If list view has entries, use those instead (same data, deduplicate by uuid)
+  const seenUUIDs = new Set(items.map(el => el.dataset.uuid));
+  document.querySelectorAll('#view-list tbody tr').forEach(row => {
+    if (row.style.display === 'none') return;
+    const uuid = row.dataset.uuid;
+    if (uuid && !seenUUIDs.has(uuid)) items.push(row);
+  });
+
+  const datasetMap = {};
+  {% for d in datasets %}
+  datasetMap["{{ d.uuid }}"] = {
+    name: {{ (d.name_base or '') | tojson }},
+    location: {{ (d.location or '') | tojson }},
+    year: {{ (d.reference_year or '') | tojson }},
+    classification: {{ (d.classification or '') | tojson }},
+    summary: {{ (d._summary or '') | tojson }},
+    uuid: "{{ d.uuid }}",
+  };
+  {% endfor %}
+
+  let i = 0;
+  items.forEach(el => {
+    const uuid = el.dataset ? el.dataset.uuid : null;
+    const d = uuid ? datasetMap[uuid] : null;
+    if (!d) return;
+    i++;
+    const esc = s => (s || '—').replace(/\|/g, '\\|');
+    lines.push(`| ${i} | ${esc(d.name)} | ${esc(d.location)} | ${esc(d.year)} | ${esc(d.classification)} |`);
+  });
+
+  lines.push('', '---', '', '## Details', '');
+  i = 0;
+  items.forEach(el => {
+    const uuid = el.dataset ? el.dataset.uuid : null;
+    const d = uuid ? datasetMap[uuid] : null;
+    if (!d) return;
+    i++;
+    lines.push(`### ${i}. ${d.name || '—'}`);
+    lines.push(`**UUID:** \`${d.uuid}\``);
+    if (d.location) lines.push(`**Location:** ${d.location}`);
+    if (d.year)     lines.push(`**Year:** ${d.year}`);
+    if (d.classification) lines.push(`**Classification:** ${d.classification}`);
+    if (d.summary)  lines.push('', d.summary);
+    lines.push('');
+  });
+
+  if (i === 0) { alert('No visible datasets to export.'); return; }
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `lca-datasets-${now.toISOString().slice(0,10)}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+let _chatHistory = [];
+
+function showChatPanel() {
+  const wrapper = document.getElementById("chat-panel-wrapper");
+  if (wrapper) wrapper.style.display = "block";
+}
+
+async function doChat() {
+  const question = document.getElementById("query-question").value.trim();
+  if (!question || selectedUUIDs.size === 0) {
+    if (selectedUUIDs.size === 0) alert("Select at least one dataset.");
+    return;
+  }
+  showChatPanel();
+  appendChatBubble("user", question);
+
+  const body = {
+    question,
+    uuids: [...selectedUUIDs],
+    history: _chatHistory,
+  };
+
+  const resp = await fetch("/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await resp.json();
+  if (data.error) {
+    appendChatBubble("assistant", "Error: " + data.error);
+    return;
+  }
+  const answer = (data.results || [])
+    .map(r => `[${r.rank}] ${r.name} (score ${r.relevance_score}/5): ${r.comment}`)
+    .join("\n");
+  appendChatBubble("assistant", answer || "(no results)");
+  _chatHistory.push({ role: "user", content: question });
+  _chatHistory.push({ role: "assistant", content: answer });
+  document.getElementById("query-question").value = "";
+}
+
+function appendChatBubble(role, text) {
+  const panel = document.getElementById("chat-panel");
+  if (!panel) return;
+  const div = document.createElement("div");
+  div.style.cssText = role === "user"
+    ? "text-align:right; margin-bottom:6px;"
+    : "text-align:left; margin-bottom:6px;";
+  const span = document.createElement("span");
+  span.style.cssText = `display:inline-block; padding:4px 10px; border-radius:4px; max-width:80%;
+    white-space:pre-wrap; text-align:left; font-size:12px;
+    background:${role === "user" ? "#0057b8" : "#e5e7eb"};
+    color:${role === "user" ? "#fff" : "#222"};`;
+  span.textContent = text;
+  div.appendChild(span);
+  panel.appendChild(div);
+  panel.scrollTop = panel.scrollHeight;
+}
+
+function clearChat() {
+  _chatHistory = [];
+  const panel = document.getElementById("chat-panel");
+  if (panel) panel.innerHTML = "";
+  const wrapper = document.getElementById("chat-panel-wrapper");
+  if (wrapper) wrapper.style.display = "none";
+}
+
 function updateSelectionUI() {
   const n = selectedUUIDs.size;
   const panel = document.getElementById('selection-panel');
   const countEl = document.getElementById('sel-count');
   if (n === 0) {
     panel.style.display = 'none';
+    const chatWrapper = document.getElementById("chat-panel-wrapper");
+    if (chatWrapper) chatWrapper.style.display = "none";
   } else {
     panel.style.display = 'flex';
     panel.style.alignItems = 'center';
@@ -400,6 +680,13 @@ function updateSelectionUI() {
   });
 }
 </script>
+
+<div id="chat-panel-wrapper" style="display:none; position:fixed; bottom:60px; left:0; right:0; z-index:99;
+  padding:0 24px;">
+  <div id="chat-panel"
+       style="height:200px; overflow-y:auto; border:1px solid #ddd; border-radius:4px;
+              padding:8px; background:#fff; font-size:13px;"></div>
+</div>
 
 <div id="selection-panel" style="
   display:none; position:fixed; bottom:0; left:0; right:0; z-index:100;
@@ -415,7 +702,7 @@ function updateSelectionUI() {
     style="flex:1; min-width:240px; padding:6px 12px; border-radius:4px;
            border:1px solid rgba(255,255,255,.3); background:rgba(255,255,255,.1);
            color:#fff; font-size:14px;"
-    onkeydown="if(event.key==='Enter') submitQuery()">
+    onkeydown="if(event.key==='Enter') doChat()">
   <div style="position:relative; display:inline-block;">
     <button id="query-fields-btn" onclick="toggleQueryFields(event)"
       style="padding:6px 10px; border:1px solid rgba(255,255,255,.3); border-radius:4px;
@@ -435,10 +722,15 @@ function updateSelectionUI() {
       <label style="display:block;"><input type="checkbox" id="qf-type"> Dataset type</label>
     </div>
   </div>
-  <button onclick="submitQuery()"
+  <button onclick="doChat()"
     style="padding:6px 16px; border:none; border-radius:4px;
            background:#0057b8; color:#fff; cursor:pointer; font-size:14px; font-weight:bold;">
-    Ask LLM
+    Ask
+  </button>
+  <button onclick="clearChat()"
+    style="padding:6px 12px; border:1px solid rgba(255,255,255,.3); border-radius:4px;
+           background:transparent; color:#fff; cursor:pointer; font-size:13px;">
+    New chat
   </button>
 </div>
 {% endblock %}

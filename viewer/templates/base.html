@@ -26,6 +26,15 @@
   <nav class="nav">
     <a href="/">Sphera LCA Viewer</a>
     <span style="font-size:12px; color:#7a8fa6;">{{ output_dir }}</span>
+    {% if llm_configured %}
+      <span style="font-size:12px; color:#a8dadc;" title="Change via LLM_PROVIDER / LLM_MODEL in .env">
+        ⚡ {{ llm_provider }} · {{ llm_model }}
+      </span>
+    {% else %}
+      <span style="font-size:12px; color:#f87171;" title="Set LLM_PROVIDER and API key in .env to enable LLM queries">
+        ⚠ LLM not configured
+      </span>
+    {% endif %}
     <form method="post" action="/shutdown" style="margin-left:auto;"
           onsubmit="return confirm('Stop the server?');">
       <button type="submit"
