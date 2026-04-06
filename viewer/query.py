@@ -24,6 +24,7 @@ def build_prompt(
     question: str,
     datasets: list[dict],
     fields: list[str] | None = None,
+    history: list[dict] | None = None,
 ) -> str:
     """Build the user message for the LLM query.
 
@@ -38,12 +39,27 @@ def build_prompt(
         UUID and name are always included regardless of this setting.
         Valid values: "classification", "location", "year",
                       "description", "synonyms", "dataset_type".
+    history : list of {"role": "user"|"assistant", "content": str}
+              Prior conversation turns prepended before the current question.
     """
     if fields is None:
         fields = list(_ALL_FIELDS)
     field_set = set(fields)
 
-    lines = [f"Question: {question}\n", "Datasets:"]
+    lines = []
+
+    # Prepend conversation history if provided
+    if history:
+        lines.append("Prior conversation:")
+        for turn in history:
+            role = turn.get("role", "user").capitalize()
+            content = turn.get("content", "")
+            lines.append(f"{role}: {content}")
+        lines.append("")  # blank separator
+
+    lines.append(f"Question: {question}\n")
+    lines.append("Datasets:")
+
     for d in datasets:
         entry_lines = [
             "\n---",
@@ -64,6 +80,7 @@ def build_prompt(
             desc = d.get("_summary") or (d.get("technology_description") or "")[:500]
             entry_lines.append(f"Description: {desc}")
         lines.append("\n".join(entry_lines))
+
     return "\n".join(lines)
 
 
@@ -90,9 +107,11 @@ def run_query(
     datasets: list[dict],
     client: LLMClient,
     fields: list[str] | None = None,
+    history: list[dict] | None = None,
 ) -> list[dict]:
     """Call the LLM and return ranked dataset results."""
-    results, _ = run_query_with_usage(question, datasets, client=client, fields=fields)
+    results, _ = run_query_with_usage(question, datasets, client=client,
+                                      fields=fields, history=history)
     return results
 
 
@@ -101,6 +120,7 @@ def run_query_with_usage(
     datasets: list[dict],
     client: LLMClient,
     fields: list[str] | None = None,
+    history: list[dict] | None = None,
 ) -> tuple[list[dict], dict]:
     """Call the LLM and return (ranked results, usage dict).
 
@@ -108,7 +128,7 @@ def run_query_with_usage(
     cache_creation_input_tokens, cache_read_input_tokens.
     All values are zero (usage not exposed through LLMClient abstraction).
     """
-    user_message = build_prompt(question, datasets, fields=fields)
+    user_message = build_prompt(question, datasets, fields=fields, history=history)
     text = client.complete(QUERY_SYSTEM, user_message, 4000)
     usage = {
         "input_tokens": 0,
