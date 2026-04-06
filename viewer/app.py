@@ -12,6 +12,7 @@ load_dotenv()
 
 from viewer.sections import SECTIONS, DEFAULT_OPEN
 from core.llm import create_llm_client
+from core.chroma_store import query_similar
 
 # When frozen by PyInstaller:
 #   - dataset/ lives next to the .exe  (user data, not bundled)
@@ -25,6 +26,7 @@ else:
 
 OUTPUT_DIR   = _BASE / "dataset" / "output"
 ENRICHED_DIR = _BASE / "dataset" / "enriched"
+CHROMA_DIR   = _BASE / "dataset" / "chroma"
 
 app = Flask(__name__, **({"template_folder": _TEMPLATE_DIR} if _TEMPLATE_DIR else {}))
 
@@ -144,6 +146,25 @@ def query():
         return jsonify({"results": results})
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
+
+
+@app.route("/search", methods=["POST"])
+def search():
+    body = request.get_json(silent=True) or {}
+    question = body.get("question", "").strip()
+    if not question:
+        return jsonify({"error": "question is required"}), 400
+
+    filters = body.get("filters") or None
+
+    results = query_similar(
+        question,
+        chroma_path=CHROMA_DIR,
+        n_results=20,
+        where=filters,
+    )
+    uuids = [r["uuid"] for r in results]
+    return jsonify({"uuids": uuids, "matches": results})
 
 
 @app.route("/shutdown", methods=["POST"])

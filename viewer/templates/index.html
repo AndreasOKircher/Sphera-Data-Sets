@@ -34,6 +34,27 @@
   </div>
 </div>
 
+<div style="background:#fff; border:1px solid #ddd; border-radius:8px; padding:14px 16px; margin-bottom:16px;">
+  <h6 style="font-size:13px; font-weight:bold; margin:0 0 8px 0;">Semantic Search</h6>
+  <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    <input id="semantic-input" type="text" class="form-control"
+           style="flex:1; min-width:240px; padding:6px 12px; border:1px solid #ccc; border-radius:4px; font-size:14px;"
+           placeholder="e.g. aluminium with post-consumer recycling content">
+    <select id="filter-type"
+            style="padding:6px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
+      <option value="">All dataset types</option>
+      {% for ds_type in datasets | map(attribute='xls_dataset_type') | unique | sort %}
+        {% if ds_type %}<option value="{{ ds_type }}">{{ ds_type }}</option>{% endif %}
+      {% endfor %}
+    </select>
+    <button onclick="doSemanticSearch()"
+            style="padding:6px 14px; border:none; border-radius:4px; background:#0057b8; color:#fff; cursor:pointer; font-size:13px; font-weight:bold;">
+      Search
+    </button>
+  </div>
+  <div id="semantic-results" style="margin-top:8px; font-size:13px; color:#666;"></div>
+</div>
+
 {% if not datasets %}
   <p style="color:#666;">No datasets found in <code>dataset/output/</code>. Run the downloader first.</p>
 {% else %}
@@ -180,6 +201,37 @@
   #view-list th:hover { background: #e8eeff; }
 </style>
 <script>
+async function doSemanticSearch() {
+  const question = document.getElementById("semantic-input").value.trim();
+  if (!question) return;
+  const dsType = document.getElementById("filter-type").value;
+  const body = { question };
+  if (dsType) body.filters = { xls_dataset_type: dsType };
+
+  document.getElementById("semantic-results").textContent = "Searching…";
+  const resp = await fetch("/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await resp.json();
+  if (data.error) {
+    document.getElementById("semantic-results").textContent = "Error: " + data.error;
+    return;
+  }
+  const uuids = new Set(data.uuids);
+  // Highlight matching rows and cards
+  document.querySelectorAll("#view-list tbody tr").forEach(row => {
+    row.style.background = uuids.has(row.dataset.uuid) ? "#fffde7" : "";
+  });
+  document.querySelectorAll("#view-cards > a").forEach(card => {
+    const uuid = card.dataset.uuid;
+    card.querySelector("div").style.borderColor = uuids.has(uuid) ? "#f59e0b" : "#ddd";
+  });
+  document.getElementById("semantic-results").textContent =
+    `${data.uuids.length} matching datasets highlighted.`;
+}
+
 let currentView = 'cards';
 let sortCol = -1;
 let sortAsc = true;
