@@ -122,8 +122,9 @@
           <th onclick="sortTable(2,false)" style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:80px;">Location <span class="si">⇅</span></th>
           <th onclick="sortTable(3,true)"  style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:55px;">Year <span class="si">⇅</span></th>
           <th onclick="sortTable(4,false)" style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:120px;">Type <span class="si">⇅</span></th>
-          <th onclick="sortTable(5,false)" style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:110px;">DQI <span class="si">⇅</span></th>
-          <th onclick="sortTable(6,true)"  style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:75px;">Supply <span class="si">⇅</span></th>
+          <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:110px;">DB Type</th>
+          <th onclick="sortTable(6,false)" style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:110px;">DQI <span class="si">⇅</span></th>
+          <th onclick="sortTable(7,true)"  style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:75px;">Supply <span class="si">⇅</span></th>
         </tr>
       </thead>
       <tbody>
@@ -147,6 +148,7 @@
           <td style="padding:8px 12px;">{{ d.location or "—" }}</td>
           <td style="padding:8px 12px;">{{ d.reference_year or "—" }}</td>
           <td style="padding:8px 12px;">{{ d.dataset_type or "—" }}</td>
+          <td style="padding:8px 12px;">{{ d.xls_dataset_type or "—" }}</td>
           <td style="padding:8px 12px;">
             {% if d.dqi_overall_quality %}
               {% set dqi_class = "badge-dqi-very-good" if "very" in (d.dqi_overall_quality | lower) else "badge-dqi-good" if "good" in (d.dqi_overall_quality | lower) else "badge-dqi-other" %}

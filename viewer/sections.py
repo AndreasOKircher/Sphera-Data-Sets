@@ -35,6 +35,9 @@ SECTIONS = [
     ("Name Details", [
         "name_treatment_standards_routes", "name_mix_and_location_types",
     ]),
+    ("Catalogue", [
+        "source_url", "xls_dataset_type", "databases",
+    ]),
 ]
 
 # MUST fields checked in terminal summary header (null audit).

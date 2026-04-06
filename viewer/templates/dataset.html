@@ -134,7 +134,9 @@ function renderMarkdown(text) {
           {{ field }}
         </td>
         <td style="padding:6px 0; vertical-align:top;">
-          {% if val is none or val == "" %}
+          {% if field == "source_url" and val %}
+            <a href="{{ val }}" target="_blank" rel="noopener">{{ val }}</a>
+          {% elif val is none or val == "" %}
             <span class="null">—</span>
           {% elif val is iterable and val is not string %}
             <ul style="margin:0; padding-left:18px;">
