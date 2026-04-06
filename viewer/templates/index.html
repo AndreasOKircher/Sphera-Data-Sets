@@ -462,18 +462,27 @@ async function submitQuery() {
         const scoreBg   = score >= 4 ? '#d1fae5' : score >= 2 ? '#fef3c7' : '#e5e7eb';
         const tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid #f0f0f0';
-        tr.innerHTML = `
-          <td style="padding:8px 12px; text-align:center; font-weight:bold;">${r.rank ?? '—'}</td>
-          <td style="padding:8px 12px;">
-            <a href="/dataset/${r.uuid}" style="color:#0057b8; font-weight:bold;">${r.name || r.uuid}</a>
-          </td>
-          <td style="padding:8px 12px; text-align:center;">
-            <span style="display:inline-block; padding:2px 8px; border-radius:4px;
-                         background:${scoreBg}; color:${scoreColor}; font-weight:bold; font-size:12px;">
-              ${score}/5
-            </span>
-          </td>
-          <td style="padding:8px 12px; color:#444;">${r.comment || ''}</td>`;
+        const tdRank = document.createElement('td');
+        tdRank.style.cssText = 'padding:8px 12px; text-align:center; font-weight:bold;';
+        tdRank.textContent = String(r.rank ?? '—');
+        const a = document.createElement('a');
+        a.href = `/dataset/${encodeURIComponent(r.uuid)}`;
+        a.style.cssText = 'color:#0057b8; font-weight:bold;';
+        a.textContent = r.name || r.uuid;
+        const tdName = document.createElement('td');
+        tdName.style.cssText = 'padding:8px 12px;';
+        tdName.appendChild(a);
+        const span = document.createElement('span');
+        span.style.cssText = `display:inline-block; padding:2px 8px; border-radius:4px;
+                     background:${scoreBg}; color:${scoreColor}; font-weight:bold; font-size:12px;`;
+        span.textContent = `${score}/5`;
+        const tdScore = document.createElement('td');
+        tdScore.style.cssText = 'padding:8px 12px; text-align:center;';
+        tdScore.appendChild(span);
+        const tdComment = document.createElement('td');
+        tdComment.style.cssText = 'padding:8px 12px; color:#444;';
+        tdComment.textContent = r.comment || '';
+        tr.append(tdRank, tdName, tdScore, tdComment);
         tbody.appendChild(tr);
       });
       _lastResults = data.results;
