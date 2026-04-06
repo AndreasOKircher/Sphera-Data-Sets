@@ -1,6 +1,7 @@
 # core/xls_manifest.py
 from __future__ import annotations
 from dataclasses import dataclass, field
+import re
 import openpyxl
 
 
@@ -12,37 +13,46 @@ class ManifestEntry:
     databases: list[str]
 
 
-# Column indices (0-based) in the XLS sheet
-_COL_GUID = 0
-_COL_URL = 1
-_COL_TYPE = 2
-_COL_DBS = 3
+# Column indices (0-based) matching the actual Sphera XLS layout:
+#   Row 4 = headers, Row 5+ = data
+_COL_GUID = 1   # "GUID"
+_COL_TYPE = 11  # "Dataset type"
+_COL_DBS  = 16  # "All standard DBs that contain this dataset (new names only)"
+_COL_URL  = 28  # "Website link"
+_DATA_START_ROW = 5
 
 
 def load_manifest(xls_path: str) -> dict[str, ManifestEntry]:
-    """Load the Sphera XLS manifest and return a dict keyed by GUID.
+    """Load the Sphera XLS manifest and return a dict keyed by UUID.
+
+    GUIDs in the XLS are upper-case with braces ({...}); they are normalised
+    to lower-case without braces to match the UUID format used in dataset JSON.
 
     Skips rows where GUID cell is blank.
-    Multi-database cells are split on newline.
+    Multi-database cells are split on newline or "/" separators.
     """
     wb = openpyxl.load_workbook(xls_path, read_only=True, data_only=True)
     ws = wb.active
     result: dict[str, ManifestEntry] = {}
 
-    for row in ws.iter_rows(min_row=2, values_only=False):
+    for row in ws.iter_rows(min_row=_DATA_START_ROW, values_only=False):
         def _cell(idx: int) -> str:
             v = row[idx].value if idx < len(row) else None
             return str(v).strip() if v is not None else ""
 
-        guid = _cell(_COL_GUID)
-        if not guid:
+        raw_guid = _cell(_COL_GUID)
+        if not raw_guid:
             continue
 
-        raw_dbs = _cell(_COL_DBS)
-        databases = [db.strip() for db in raw_dbs.splitlines() if db.strip()]
+        # Normalise: strip braces, lower-case → "0009da54-4751-..."
+        uuid = raw_guid.strip("{}").lower()
 
-        result[guid] = ManifestEntry(
-            uuid=guid,
+        raw_dbs = _cell(_COL_DBS)
+        # Split on newline OR "/" — the XLS uses both as multi-DB separators
+        databases = [db.strip() for db in re.split(r'[\n/]', raw_dbs) if db.strip()]
+
+        result[uuid] = ManifestEntry(
+            uuid=uuid,
             source_url=_cell(_COL_URL),
             xls_dataset_type=_cell(_COL_TYPE),
             databases=databases,
