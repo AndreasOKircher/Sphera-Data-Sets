@@ -583,12 +583,81 @@ function exportVisibleMd() {
   URL.revokeObjectURL(url);
 }
 
+let _chatHistory = [];
+
+function showChatPanel() {
+  const wrapper = document.getElementById("chat-panel-wrapper");
+  if (wrapper) wrapper.style.display = "block";
+}
+
+async function doChat() {
+  const question = document.getElementById("query-question").value.trim();
+  if (!question || selectedUUIDs.size === 0) {
+    if (selectedUUIDs.size === 0) alert("Select at least one dataset.");
+    return;
+  }
+  showChatPanel();
+  appendChatBubble("user", question);
+
+  const body = {
+    question,
+    uuids: [...selectedUUIDs],
+    history: _chatHistory,
+  };
+
+  const resp = await fetch("/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await resp.json();
+  if (data.error) {
+    appendChatBubble("assistant", "Error: " + data.error);
+    return;
+  }
+  const answer = (data.results || [])
+    .map(r => `[${r.rank}] ${r.name} (score ${r.relevance_score}/5): ${r.comment}`)
+    .join("\n");
+  appendChatBubble("assistant", answer || "(no results)");
+  _chatHistory.push({ role: "user", content: question });
+  _chatHistory.push({ role: "assistant", content: answer });
+  document.getElementById("query-question").value = "";
+}
+
+function appendChatBubble(role, text) {
+  const panel = document.getElementById("chat-panel");
+  if (!panel) return;
+  const div = document.createElement("div");
+  div.style.cssText = role === "user"
+    ? "text-align:right; margin-bottom:6px;"
+    : "text-align:left; margin-bottom:6px;";
+  const span = document.createElement("span");
+  span.style.cssText = `display:inline-block; padding:4px 10px; border-radius:4px; max-width:80%;
+    white-space:pre-wrap; text-align:left; font-size:12px;
+    background:${role === "user" ? "#0057b8" : "#e5e7eb"};
+    color:${role === "user" ? "#fff" : "#222"};`;
+  span.textContent = text;
+  div.appendChild(span);
+  panel.appendChild(div);
+  panel.scrollTop = panel.scrollHeight;
+}
+
+function clearChat() {
+  _chatHistory = [];
+  const panel = document.getElementById("chat-panel");
+  if (panel) panel.innerHTML = "";
+  const wrapper = document.getElementById("chat-panel-wrapper");
+  if (wrapper) wrapper.style.display = "none";
+}
+
 function updateSelectionUI() {
   const n = selectedUUIDs.size;
   const panel = document.getElementById('selection-panel');
   const countEl = document.getElementById('sel-count');
   if (n === 0) {
     panel.style.display = 'none';
+    const chatWrapper = document.getElementById("chat-panel-wrapper");
+    if (chatWrapper) chatWrapper.style.display = "none";
   } else {
     panel.style.display = 'flex';
     panel.style.alignItems = 'center';
@@ -602,6 +671,13 @@ function updateSelectionUI() {
   });
 }
 </script>
+
+<div id="chat-panel-wrapper" style="display:none; position:fixed; bottom:60px; left:0; right:0; z-index:99;
+  padding:0 24px;">
+  <div id="chat-panel"
+       style="height:200px; overflow-y:auto; border:1px solid #ddd; border-radius:4px;
+              padding:8px; background:#fff; font-size:13px;"></div>
+</div>
 
 <div id="selection-panel" style="
   display:none; position:fixed; bottom:0; left:0; right:0; z-index:100;
@@ -617,7 +693,7 @@ function updateSelectionUI() {
     style="flex:1; min-width:240px; padding:6px 12px; border-radius:4px;
            border:1px solid rgba(255,255,255,.3); background:rgba(255,255,255,.1);
            color:#fff; font-size:14px;"
-    onkeydown="if(event.key==='Enter') submitQuery()">
+    onkeydown="if(event.key==='Enter') doChat()">
   <div style="position:relative; display:inline-block;">
     <button id="query-fields-btn" onclick="toggleQueryFields(event)"
       style="padding:6px 10px; border:1px solid rgba(255,255,255,.3); border-radius:4px;
@@ -637,10 +713,15 @@ function updateSelectionUI() {
       <label style="display:block;"><input type="checkbox" id="qf-type"> Dataset type</label>
     </div>
   </div>
-  <button onclick="submitQuery()"
+  <button onclick="doChat()"
     style="padding:6px 16px; border:none; border-radius:4px;
            background:#0057b8; color:#fff; cursor:pointer; font-size:14px; font-weight:bold;">
-    Ask LLM
+    Ask
+  </button>
+  <button onclick="clearChat()"
+    style="padding:6px 12px; border:1px solid rgba(255,255,255,.3); border-radius:4px;
+           background:transparent; color:#fff; cursor:pointer; font-size:13px;">
+    New chat
   </button>
 </div>
 {% endblock %}

@@ -167,6 +167,38 @@ def search():
     return jsonify({"uuids": uuids, "matches": results})
 
 
+@app.route("/chat", methods=["POST"])
+def chat():
+    body = request.get_json(silent=True) or {}
+    question = body.get("question", "").strip()
+    uuids = body.get("uuids")
+    history = body.get("history") or []
+
+    if not question:
+        return jsonify({"error": "question is required"}), 400
+    if not uuids:
+        return jsonify({"error": "uuids is required"}), 400
+
+    llm_client = app.config.get("LLM_CLIENT")
+    if llm_client is None:
+        return jsonify({"error": "LLM client not configured"}), 503
+
+    all_datasets = load_all()
+    uuid_set = set(uuids)
+    selected = [d for d in all_datasets if d.get("uuid") in uuid_set]
+    if not selected:
+        return jsonify({"error": "No matching datasets found"}), 400
+
+    fields = body.get("fields") or None
+    try:
+        from viewer.query import run_query
+        results = run_query(question, selected, client=llm_client,
+                            fields=fields, history=history)
+        return jsonify({"results": results})
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
 @app.route("/shutdown", methods=["POST"])
 def shutdown():
     import os
