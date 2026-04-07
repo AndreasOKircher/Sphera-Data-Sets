@@ -39,17 +39,16 @@
   <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
     <input id="semantic-input" type="text" class="form-control"
            style="flex:1; min-width:240px; padding:6px 12px; border:1px solid #ccc; border-radius:4px; font-size:14px;"
-           placeholder="e.g. aluminium with post-consumer recycling content">
-    <select id="filter-type"
-            style="padding:6px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
-      <option value="">All dataset types</option>
-      {% for ds_type in datasets | map(attribute='xls_dataset_type') | unique | sort %}
-        {% if ds_type %}<option value="{{ ds_type }}">{{ ds_type }}</option>{% endif %}
-      {% endfor %}
-    </select>
+           placeholder="e.g. aluminium with post-consumer recycling content"
+           oninput="if(!this.value.trim()) clearSemanticFilter()"
+           onkeydown="if(event.key==='Enter') doSemanticSearch()">
     <button onclick="doSemanticSearch()"
             style="padding:6px 14px; border:none; border-radius:4px; background:#0057b8; color:#fff; cursor:pointer; font-size:13px; font-weight:bold;">
       Search
+    </button>
+    <button onclick="clearSemanticFilter()"
+            style="padding:6px 12px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#555; cursor:pointer; font-size:13px;">
+      ✕ Clear
     </button>
   </div>
   <div id="semantic-results" style="margin-top:8px; font-size:13px; color:#666;"></div>
@@ -70,15 +69,20 @@
                  background:#fff; cursor:pointer;">✕ Dismiss</button>
       </div>
     </div>
+    <div id="results-loading" style="display:none; text-align:center; padding:28px 0;">
+      <div style="display:inline-block; font-size:14px; color:#555;">
+        <span style="display:inline-block; animation:spin 1s linear infinite; margin-right:8px;">⏳</span>
+        Asking LLM — this may take a few seconds…
+      </div>
+    </div>
     <div id="results-error" style="color:#c00; font-size:14px; display:none;"></div>
     <table id="results-table" style="width:100%; border-collapse:collapse; background:#fff;
       border:1px solid #ddd; border-radius:8px; overflow:hidden; font-size:13px; display:none;">
       <thead>
         <tr style="background:#f0f4ff; font-weight:bold; text-align:left;">
-          <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:50px;">Rank</th>
+          <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:44px;">#</th>
           <th style="padding:10px 12px; border-bottom:1px solid #ddd;">Dataset</th>
-          <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:65px; text-align:center;">Score</th>
-          <th style="padding:10px 12px; border-bottom:1px solid #ddd;">Comment</th>
+          <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:60px; text-align:center;">Score</th>
         </tr>
       </thead>
       <tbody id="results-tbody"></tbody>
@@ -143,7 +147,7 @@
           <th onclick="sortTable(2,false)" style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:80px;">Location <span class="si">⇅</span></th>
           <th onclick="sortTable(3,true)"  style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:55px;">Year <span class="si">⇅</span></th>
           <th onclick="sortTable(4,false)" style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:120px;">Type <span class="si">⇅</span></th>
-          <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:110px;">DB Type<span class="si" style="display:none;"></span></th>
+          <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:130px;">Database<span class="si" style="display:none;"></span></th>
           <th onclick="sortTable(6,false)" style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:110px;">DQI <span class="si">⇅</span></th>
           <th onclick="sortTable(7,true)"  style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:75px;">Supply <span class="si">⇅</span></th>
         </tr>
@@ -169,7 +173,11 @@
           <td style="padding:8px 12px;">{{ d.location or "—" }}</td>
           <td style="padding:8px 12px;">{{ d.reference_year or "—" }}</td>
           <td style="padding:8px 12px;">{{ d.dataset_type or "—" }}</td>
-          <td style="padding:8px 12px;">{{ d.xls_dataset_type or "—" }}</td>
+          <td style="padding:8px 12px; font-size:12px; color:#555;">
+            {% if d.databases %}
+              {% for db in d.databases %}{{ db | replace("MLC Database Premium - ", "Prem ") | replace("MLC Database - ", "") | replace(" 2026", "") }}{% if not loop.last %}, {% endif %}{% endfor %}
+            {% else %}—{% endif %}
+          </td>
           <td style="padding:8px 12px;">
             {% if d.dqi_overall_quality %}
               {% set dqi_class = "badge-dqi-very-good" if "very" in (d.dqi_overall_quality | lower) else "badge-dqi-good" if "good" in (d.dqi_overall_quality | lower) else "badge-dqi-other" %}
@@ -189,7 +197,7 @@
   </div>
 
   <div style="margin-top:20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-    <p id="count-label" style="color:#666; font-size:13px; margin:0;">{{ datasets | length }} datasets loaded</p>
+    <p id="count-label" style="color:#666; font-size:13px; margin:0;">{{ datasets | length }} datasets</p>
     <button onclick="exportVisibleMd()"
       style="padding:3px 10px; font-size:12px; border:1px solid #0057b8; border-radius:4px;
              background:#fff; color:#0057b8; cursor:pointer;">⬇ Export visible as .md</button>
@@ -201,35 +209,77 @@
   #view-list th:hover { background: #e8eeff; }
 </style>
 <script>
+function renderMarkdown(text) {
+  if (!text) return '';
+  text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return text.split(/\n\n+/).map(chunk => {
+    chunk = chunk.trim();
+    if (!chunk) return '';
+    chunk = chunk.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    if (/^### /.test(chunk)) {
+      return chunk.replace(/^### (.+)/, '<h3 style="font-size:12px;font-weight:bold;margin:8px 0 2px;">$1</h3>');
+    }
+    if (/^## /.test(chunk)) {
+      return chunk.replace(/^## (.+)/, '<h2 style="font-size:13px;font-weight:bold;margin:10px 0 3px;">$1</h2>');
+    }
+    if (/^- /.test(chunk)) {
+      const items = chunk.split('\n').map(l => l.replace(/^- /, '')).filter(l => l.trim());
+      return '<ul style="margin:0 0 6px;padding-left:16px;">' + items.map(i => `<li>${i}</li>`).join('') + '</ul>';
+    }
+    chunk = chunk.replace(/\n/g, '<br>');
+    return `<p style="margin:0 0 6px;">${chunk}</p>`;
+  }).join('');
+}
+
+let _semanticActive = false;
+
 async function doSemanticSearch() {
   const question = document.getElementById("semantic-input").value.trim();
-  if (!question) return;
-  const dsType = document.getElementById("filter-type").value;
-  const body = { question };
-  if (dsType) body.filters = { xls_dataset_type: dsType };
+  if (!question) { clearSemanticFilter(); return; }
 
   document.getElementById("semantic-results").textContent = "Searching…";
   const resp = await fetch("/search", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ question }),
   });
   const data = await resp.json();
   if (data.error) {
     document.getElementById("semantic-results").textContent = "Error: " + data.error;
     return;
   }
-  const uuids = new Set(data.uuids);
-  // Highlight matching rows and cards
-  document.querySelectorAll("#view-list tbody tr").forEach(row => {
-    row.style.background = uuids.has(row.dataset.uuid) ? "#fffde7" : "";
+
+  const orderedUUIDs = data.uuids;   // already sorted by relevance
+  const uuidSet = new Set(orderedUUIDs);
+
+  // List view: hide non-matches, reorder matches to top in relevance order
+  const tbody = document.querySelector("#view-list tbody");
+  const rowMap = {};
+  tbody.querySelectorAll("tr").forEach(row => { rowMap[row.dataset.uuid] = row; });
+  tbody.querySelectorAll("tr").forEach(row => { row.style.display = "none"; });
+  orderedUUIDs.forEach(uuid => {
+    if (rowMap[uuid]) { rowMap[uuid].style.display = ""; tbody.appendChild(rowMap[uuid]); }
   });
+
+  // Card view: hide non-matches
   document.querySelectorAll("#view-cards > a").forEach(card => {
-    const uuid = card.dataset.uuid;
-    card.querySelector("div").style.borderColor = uuids.has(uuid) ? "#f59e0b" : "#ddd";
+    card.style.display = uuidSet.has(card.dataset.uuid) ? "" : "none";
   });
+
+  const label = document.getElementById("count-label");
+  if (label) label.textContent = `${orderedUUIDs.length} of {{ datasets | length }} datasets (semantic search)`;
   document.getElementById("semantic-results").textContent =
-    `${data.uuids.length} matching datasets highlighted.`;
+    `Top ${orderedUUIDs.length} results shown, sorted by relevance — press ✕ Clear to reset.`;
+  _semanticActive = true;
+}
+
+function clearSemanticFilter() {
+  document.getElementById("semantic-input").value = "";
+  document.querySelectorAll("#view-list tbody tr").forEach(row => { row.style.display = ""; });
+  document.querySelectorAll("#view-cards > a").forEach(card => { card.style.display = ""; });
+  document.getElementById("semantic-results").textContent = "";
+  _semanticActive = false;
+  filterAll(); // reapply any text search
 }
 
 let currentView = 'cards';
@@ -312,6 +362,7 @@ function setView(v) {
 }
 
 function filterAll() {
+  if (_semanticActive) return; // semantic filter owns visibility; don't interfere
   const q1 = document.getElementById('search').value.toLowerCase();
   const q2 = document.getElementById('search-kw').value.toLowerCase();
   sessionStorage.setItem('search', q1);
@@ -333,7 +384,7 @@ function filterAll() {
   const label = document.getElementById('count-label');
   if (label) {
     const active = q1 || q2;
-    label.textContent = active ? `${visible} of ${total} datasets` : `${total} datasets loaded`;
+    label.textContent = active ? `${visible} of ${total} datasets` : `${total} datasets`;
   }
 }
 
@@ -350,6 +401,20 @@ const selectedUUIDs = new Set();
 let _lastQuestion = '';
 let _lastResults = [];
 
+// Global dataset lookup — built once at page load from server-rendered data
+const datasetMap = {};
+{% for d in datasets %}
+datasetMap["{{ d.uuid }}"] = {
+  name: {{ (d.name_base or '') | tojson }},
+  location: {{ (d.location or '') | tojson }},
+  year: {{ (d.reference_year or '') | tojson }},
+  classification: {{ (d.classification or '') | tojson }},
+  process_type: {{ (d.process_type or '') | tojson }},
+  summary: {{ (d._summary or '') | tojson }},
+  uuid: "{{ d.uuid }}",
+};
+{% endfor %}
+
 function exportMarkdown() {
   const now = new Date();
   const ts = now.toISOString().slice(0, 16).replace('T', ' ');
@@ -362,8 +427,8 @@ function exportMarkdown() {
     '',
     '---',
     '',
-    '| Rank | Dataset | Score | Comment |',
-    '|------|---------|-------|---------|',
+    '| # | Dataset | Score | Comment |',
+    '|---|---------|-------|---------|',
   ];
   _lastResults.forEach(r => {
     const name = (r.name || r.uuid).replace(/\|/g, '\\|');
@@ -426,6 +491,7 @@ async function submitQuery() {
 
   const panel = document.getElementById('results-panel');
   const errorEl = document.getElementById('results-error');
+  const loadingEl = document.getElementById('results-loading');
   const tableEl = document.getElementById('results-table');
   const tbody = document.getElementById('results-tbody');
   const label = document.getElementById('results-question-label');
@@ -436,6 +502,7 @@ async function submitQuery() {
   document.getElementById('btn-export-md').style.display = 'none';
   label.textContent = `Q: ${question}`;
   errorEl.style.display = 'none';
+  loadingEl.style.display = 'block';
   tableEl.style.display = 'none';
   usageEl.style.display = 'none';
   tbody.innerHTML = '';
@@ -449,6 +516,7 @@ async function submitQuery() {
       body: JSON.stringify({ question, uuids: [...selectedUUIDs], fields: _selectedQueryFields() }),
     });
     const data = await resp.json();
+    loadingEl.style.display = 'none';
     if (!resp.ok || data.error) {
       errorEl.textContent = data.error || `Server error ${resp.status}`;
       errorEl.style.display = '';
@@ -460,29 +528,47 @@ async function submitQuery() {
         const score = Number(r.relevance_score) || 0;
         const scoreColor = score >= 4 ? '#065f46' : score >= 2 ? '#92400e' : '#6b7280';
         const scoreBg   = score >= 4 ? '#d1fae5' : score >= 2 ? '#fef3c7' : '#e5e7eb';
+        const meta = datasetMap[r.uuid] || {};
+
         const tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid #f0f0f0';
+
+        // Rank cell
         const tdRank = document.createElement('td');
-        tdRank.style.cssText = 'padding:8px 12px; text-align:center; font-weight:bold;';
+        tdRank.style.cssText = `padding:10px 12px; text-align:center; font-size:16px;
+          font-weight:bold; color:${scoreColor}; vertical-align:top;`;
         tdRank.textContent = String(r.rank ?? '—');
+
+        // Name + meta + comment cell
+        const tdName = document.createElement('td');
+        tdName.style.cssText = 'padding:10px 12px; vertical-align:top;';
+
         const a = document.createElement('a');
         a.href = `/dataset/${encodeURIComponent(r.uuid)}`;
-        a.style.cssText = 'color:#0057b8; font-weight:bold;';
+        a.style.cssText = 'color:#0057b8; font-weight:bold; font-size:14px; display:block; margin-bottom:3px;';
         a.textContent = r.name || r.uuid;
-        const tdName = document.createElement('td');
-        tdName.style.cssText = 'padding:8px 12px;';
-        tdName.appendChild(a);
+
+        const sub = document.createElement('div');
+        sub.style.cssText = 'font-size:11px; color:#888; margin-bottom:5px;';
+        const subParts = [meta.classification, meta.location, meta.process_type].filter(Boolean);
+        sub.textContent = subParts.join(' · ');
+
+        const comment = document.createElement('div');
+        comment.style.cssText = 'font-size:12px; color:#555; font-style:italic; line-height:1.5;';
+        comment.textContent = r.comment || '';
+
+        tdName.append(a, sub, comment);
+
+        // Score cell
         const span = document.createElement('span');
-        span.style.cssText = `display:inline-block; padding:2px 8px; border-radius:4px;
-                     background:${scoreBg}; color:${scoreColor}; font-weight:bold; font-size:12px;`;
+        span.style.cssText = `display:inline-block; padding:4px 10px; border-radius:4px;
+          background:${scoreBg}; color:${scoreColor}; font-weight:bold; font-size:13px;`;
         span.textContent = `${score}/5`;
         const tdScore = document.createElement('td');
-        tdScore.style.cssText = 'padding:8px 12px; text-align:center;';
+        tdScore.style.cssText = 'padding:10px 12px; text-align:center; vertical-align:top;';
         tdScore.appendChild(span);
-        const tdComment = document.createElement('td');
-        tdComment.style.cssText = 'padding:8px 12px; color:#444;';
-        tdComment.textContent = r.comment || '';
-        tr.append(tdRank, tdName, tdScore, tdComment);
+
+        tr.append(tdRank, tdName, tdScore);
         tbody.appendChild(tr);
       });
       _lastResults = data.results;
@@ -498,6 +584,7 @@ async function submitQuery() {
       }
     }
   } catch (err) {
+    loadingEl.style.display = 'none';
     errorEl.textContent = `Request failed: ${err.message}`;
     errorEl.style.display = '';
   } finally {
@@ -542,18 +629,6 @@ function exportVisibleMd() {
     const uuid = row.dataset.uuid;
     if (uuid && !seenUUIDs.has(uuid)) items.push(row);
   });
-
-  const datasetMap = {};
-  {% for d in datasets %}
-  datasetMap["{{ d.uuid }}"] = {
-    name: {{ (d.name_base or '') | tojson }},
-    location: {{ (d.location or '') | tojson }},
-    year: {{ (d.reference_year or '') | tojson }},
-    classification: {{ (d.classification or '') | tojson }},
-    summary: {{ (d._summary or '') | tojson }},
-    uuid: "{{ d.uuid }}",
-  };
-  {% endfor %}
 
   let i = 0;
   items.forEach(el => {
@@ -607,6 +682,10 @@ async function doChat() {
   }
   showChatPanel();
   appendChatBubble("user", question);
+  const thinkingEl = appendThinkingBubble();
+
+  const askBtn = document.querySelector('[onclick="doChat()"]');
+  if (askBtn) { askBtn.disabled = true; askBtn.textContent = '…'; }
 
   const body = {
     question,
@@ -614,23 +693,33 @@ async function doChat() {
     history: _chatHistory,
   };
 
-  const resp = await fetch("/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await resp.json();
-  if (data.error) {
-    appendChatBubble("assistant", "Error: " + data.error);
-    return;
+  try {
+    const resp = await fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await resp.json();
+    thinkingEl.remove();
+    if (data.error) {
+      appendChatBubble("assistant", "Error: " + data.error);
+      return;
+    }
+    const answer = (data.results || [])
+      .map(r => {
+        const meta = [r.location, r.process_type].filter(Boolean).join(' · ');
+        const header = meta ? `**${r.rank}. ${r.name}** · ${meta} — ${r.relevance_score}/5`
+                            : `**${r.rank}. ${r.name}** — ${r.relevance_score}/5`;
+        return `${header}\n\n${r.comment}`;
+      })
+      .join("\n\n");
+    appendChatBubble("assistant", answer || "(no results)");
+    _chatHistory.push({ role: "user", content: question });
+    _chatHistory.push({ role: "assistant", content: answer });
+    document.getElementById("query-question").value = "";
+  } finally {
+    if (askBtn) { askBtn.disabled = false; askBtn.textContent = 'Ask'; }
   }
-  const answer = (data.results || [])
-    .map(r => `[${r.rank}] ${r.name} (score ${r.relevance_score}/5): ${r.comment}`)
-    .join("\n");
-  appendChatBubble("assistant", answer || "(no results)");
-  _chatHistory.push({ role: "user", content: question });
-  _chatHistory.push({ role: "assistant", content: answer });
-  document.getElementById("query-question").value = "";
 }
 
 function appendChatBubble(role, text) {
@@ -645,10 +734,28 @@ function appendChatBubble(role, text) {
     white-space:pre-wrap; text-align:left; font-size:12px;
     background:${role === "user" ? "#0057b8" : "#e5e7eb"};
     color:${role === "user" ? "#fff" : "#222"};`;
-  span.textContent = text;
+  if (role === "assistant") {
+    span.innerHTML = renderMarkdown(text);
+  } else {
+    span.textContent = text;
+  }
   div.appendChild(span);
   panel.appendChild(div);
   panel.scrollTop = panel.scrollHeight;
+  return div;
+}
+
+function appendThinkingBubble() {
+  const panel = document.getElementById("chat-panel");
+  const div = document.createElement("div");
+  div.style.cssText = "text-align:left; margin-bottom:6px;";
+  const span = document.createElement("span");
+  span.style.cssText = "display:inline-block; padding:4px 10px; border-radius:4px; font-size:12px; background:#e5e7eb; color:#888;";
+  span.innerHTML = '<span style="display:inline-block;animation:spin 1s linear infinite;">⏳</span> Thinking…';
+  div.appendChild(span);
+  panel.appendChild(div);
+  panel.scrollTop = panel.scrollHeight;
+  return div;
 }
 
 function clearChat() {

@@ -11,7 +11,7 @@ def sample_datasets(tmp_path):
         "uuid": "uuid-001",
         "name_base": "Steel sheet",
         "technology_description": "Production of cold-rolled steel sheet using electric arc furnace.",
-        "xls_dataset_type": "Unit process",
+        "process_type": "Unit process",
         "databases": ["Professional database 2026"],
         "location": "DE",
         "classification": "Metals",
@@ -20,7 +20,7 @@ def sample_datasets(tmp_path):
         "uuid": "uuid-002",
         "name_base": "Aluminium ingot",
         "technology_description": "Production of secondary aluminium ingot from post-consumer scrap.",
-        "xls_dataset_type": "Unit process",
+        "process_type": "Unit process",
         "databases": ["Extension database XI: electronics 2026"],
         "location": "GLO",
         "classification": "Metals",
@@ -57,9 +57,9 @@ def test_query_similar_with_metadata_filter(sample_datasets, tmp_path):
         "metal production",
         chroma_path=chroma_path,
         n_results=5,
-        where={"xls_dataset_type": "Unit process"},
+        where={"process_type": "Unit process"},
     )
-    assert all(r["xls_dataset_type"] == "Unit process" for r in results)
+    assert all(r["process_type"] == "Unit process" for r in results)
 
 
 def test_build_index_is_idempotent(sample_datasets, tmp_path):

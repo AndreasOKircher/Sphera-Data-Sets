@@ -194,6 +194,11 @@ def chat():
         from viewer.query import run_query
         results = run_query(question, selected, client=llm_client,
                             fields=fields, history=history)
+        uuid_to_meta = {d["uuid"]: d for d in selected}
+        for r in results:
+            meta = uuid_to_meta.get(r.get("uuid"), {})
+            r["location"] = meta.get("location", "")
+            r["process_type"] = meta.get("process_type", "")
         return jsonify({"results": results})
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500

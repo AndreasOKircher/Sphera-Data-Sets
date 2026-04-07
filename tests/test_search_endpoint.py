@@ -14,7 +14,7 @@ def client(tmp_path):
 
 
 def test_search_endpoint_returns_uuids(client):
-    fake_results = [{"uuid": "aaa-111", "name_base": "Steel", "xls_dataset_type": "Unit process",
+    fake_results = [{"uuid": "aaa-111", "name_base": "Steel", "process_type": "Unit process",
                      "location": "DE", "classification": "Metals", "databases": []}]
     with patch("viewer.app.query_similar", return_value=fake_results):
         resp = client.post("/search", json={"question": "steel production"})
@@ -34,7 +34,7 @@ def test_search_endpoint_applies_where_filter(client):
     with patch("viewer.app.query_similar", return_value=fake_results) as mock_qs:
         client.post("/search", json={
             "question": "aluminium",
-            "filters": {"xls_dataset_type": "Unit process"},
+            "filters": {"process_type": "Unit process"},
         })
         call_kwargs = mock_qs.call_args[1]
-        assert call_kwargs["where"] == {"xls_dataset_type": "Unit process"}
+        assert call_kwargs["where"] == {"process_type": "Unit process"}

@@ -46,7 +46,7 @@ def test_load_manifest_parses_fields():
         result = load_manifest("fake.xlsx")
     entry = result["aaa-111"]
     assert entry.source_url == "https://example.com/aaa"
-    assert entry.xls_dataset_type == "Unit process"
+    assert entry.process_type == "Unit process"
     assert "Professional database 2026" in entry.databases
 
 

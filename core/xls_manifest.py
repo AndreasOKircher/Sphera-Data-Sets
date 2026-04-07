@@ -9,7 +9,7 @@ import openpyxl
 class ManifestEntry:
     uuid: str
     source_url: str
-    xls_dataset_type: str
+    process_type: str
     databases: list[str]
 
 
@@ -54,7 +54,7 @@ def load_manifest(xls_path: str) -> dict[str, ManifestEntry]:
         result[uuid] = ManifestEntry(
             uuid=uuid,
             source_url=_cell(_COL_URL),
-            xls_dataset_type=_cell(_COL_TYPE),
+            process_type=_cell(_COL_TYPE),
             databases=databases,
         )
 

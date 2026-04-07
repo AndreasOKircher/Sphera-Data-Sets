@@ -47,7 +47,7 @@ def process_url_from_manifest(
         data = parse_dataset(xml_bytes)
         # Inject manifest-sourced fields into the data model
         data["source_url"] = entry.source_url
-        data["xls_dataset_type"] = entry.xls_dataset_type
+        data["process_type"] = entry.process_type
         data["databases"] = entry.databases
         export_dataset(data, xml_bytes, output_dir)
         print(f"[OK]   {entry.uuid} — {data.get('name_base', '')}")
@@ -103,12 +103,21 @@ def main():
             entries = list(manifest.values())
 
         counts = {"ok": 0, "skip": 0, "fail": 0}
+        failed_entries = []
         for entry in entries:
             result = process_url_from_manifest(entry, output_dir, headers=headers)
             counts[result] += 1
+            if result == "fail":
+                failed_entries.append(entry)
 
         print(f"\nDone. {counts['ok']} ok · {counts['skip']} skipped · {counts['fail']} failed.")
-        if counts["fail"]:
+        if failed_entries:
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+            fail_file = output_dir / f"failed_uuids_{timestamp}.txt"
+            fail_file.write_text(
+                "\n".join(e.source_url for e in failed_entries), encoding="utf-8"
+            )
+            print(f"Failed URLs saved to: {fail_file} (retry with --urls)")
             sys.exit(1)
         return
 

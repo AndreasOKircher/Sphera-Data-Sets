@@ -10,14 +10,14 @@ MANIFEST = {
     "aaa-111": ManifestEntry(
         uuid="aaa-111",
         source_url="https://example.com/aaa",
-        xls_dataset_type="Unit process",
+        process_type="Unit process",
         databases=["Professional database 2026"],
     )
 }
 
 
 def test_process_url_from_manifest_merges_fields(tmp_path):
-    """process_url_from_manifest injects source_url, xls_dataset_type, databases into exported JSON."""
+    """process_url_from_manifest injects source_url, process_type, databases into exported JSON."""
     fake_xml = b"<xml/>"
     fake_data = {"uuid": "aaa-111", "name_base": "Test", "technology_description": ""}
 
@@ -32,7 +32,7 @@ def test_process_url_from_manifest_merges_fields(tmp_path):
         args = mock_export.call_args[0]
         exported_data = args[0]
         assert exported_data["source_url"] == "https://example.com/aaa"
-        assert exported_data["xls_dataset_type"] == "Unit process"
+        assert exported_data["process_type"] == "Unit process"
         assert exported_data["databases"] == ["Professional database 2026"]
 
 

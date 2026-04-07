@@ -1,7 +1,6 @@
 # Field groupings for the viewer — shared by terminal and web interfaces.
-# Dropped fields (not shown): time_description, mathematical_relations,
-# lci_method_principle, lci_method_approaches, deviations_from_lci_method,
-# modelling_constants
+# Note: technology_description_summary (10a) and technology_description_formatted (10b)
+# are rendered by special template logic in dataset.html, not via the SECTIONS loop.
 
 SECTIONS = [
     ("Identity", [
@@ -26,29 +25,25 @@ SECTIONS = [
         "location", "geographical_representativeness_description",
     ]),
     ("Modelling", [
-        "dataset_type",
-    ]),
-    ("Data Sources", [
-        "data_cutoff_principles", "data_selection_principles",
-        "supply_coverage_percent",
-    ]),
-    ("Name Details", [
+        "dataset_type", "process_type",
         "name_treatment_standards_routes", "name_mix_and_location_types",
     ]),
-    ("Catalogue", [
-        "source_url", "xls_dataset_type", "databases",
+    ("Other", [
+        "lci_method_principle", "lci_method_approaches",
+        "time_description", "mathematical_relations",
+        "deviations_from_lci_method", "modelling_constants",
+        "data_cutoff_principles", "data_selection_principles",
+        "supply_coverage_percent", "source_url", "databases",
     ]),
 ]
 
 # MUST fields checked in terminal summary header (null audit).
-# Subset of core/parser.py MUST_FIELDS — excludes lci_method_principle
-# and lci_method_approaches (dropped from viewer as low value for inspection).
 MUST_FIELDS = [
     "uuid", "name_base", "synonyms", "general_comment", "location",
     "geographical_representativeness_description", "reference_year",
-    "valid_until", "technology_description", "dataset_type",
+    "valid_until", "technology_description", "dataset_type", "process_type",
     "dqi_overall_quality", "classification",
 ]
 
 # Sections open by default in web detail view
-DEFAULT_OPEN = {"Identity", "Technology", "Time", "DQI"}
+DEFAULT_OPEN = {"Identity", "Technology", "Time", "DQI", "Modelling"}

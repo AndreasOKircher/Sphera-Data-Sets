@@ -14,6 +14,7 @@ dataset/enriched/
 dataset/dedup/
 dataset/jsonl/
 dataset/combined/
+dataset/chroma/
 # Input: exclude everything except .txt URL lists
 dataset/input/*
 !dataset/input/*.txt
@@ -34,12 +35,7 @@ cookie*.txt
 # --- Build artifacts ---
 dist/
 build/sphera-*/
-*.spec
 *.exe
-
-# --- Runtime data ---
-dataset/Web/
-dataset/dedup/
 
 # --- Scratch / source material ---
 tmp/

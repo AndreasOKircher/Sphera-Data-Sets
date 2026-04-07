@@ -45,39 +45,134 @@ Each XML file represents a single process or product dataset (`processDataSet`).
 
 ## Fields Extracted
 
-Fields are split into two tiers. Both tiers are extracted and saved to JSON.
+Each dataset is stored as a flat JSON record. Fields come from two sources: the ILCD XML file and the Sphera XLS manifest. Fields are assigned one of three priority tiers.
 
-**MUST fields** — core contract, shown in terminal header and web list view:
+**Priority tiers:**
 
-| JSON Key | ILCD Source | Description |
+| Symbol | Tier | Meaning |
 |---|---|---|
-| `uuid` | `common:UUID` | Unique dataset identifier |
-| `name_base` | `baseName` | Primary product/process name |
-| `synonyms` | `common:synonyms` | Alternative names |
-| `general_comment` | `common:generalComment` | High-level dataset description |
-| `location` | `locationOfOperationSupplyOrProduction[@location]` | Country/region code (e.g. `GLO`, `DE`) |
-| `geographical_representativeness_description` | `descriptionOfRestrictions` | Scope of geographic coverage |
-| `reference_year` | `common:referenceYear` | Data reference year |
-| `valid_until` | `common:dataSetValidUntil` | Dataset expiry year |
-| `technology_description` | `technologyDescriptionAndIncludedProcesses` | Main process description (often 1,000–1,500 words) |
-| `dataset_type` | `typeOfDataSet` | e.g. `LCI result`, `Partly terminated system` |
-| `dqi_overall_quality` | `dataQualityIndicator[@name="Overall quality"]` | Overall data quality rating |
-| `classification` | `common:class` (all levels joined) | Category hierarchy, e.g. `Electronics / Passive components` |
+| ✅ MUST | Core | Stable contract — used for LLM queries, search, and the list view |
+| 🔵 NICE | Extended | Additional context — shown in the detail view, useful for deep queries |
+| ❌ EXCL | Excluded | Not extracted — adds token overhead without semantic value for discovery |
 
-**NICE-TO-HAVE fields** — additional context, shown in full detail view:
+### Core Fields
 
-`name_treatment_standards_routes`, `name_mix_and_location_types`, `name_functional_unit`,
-`use_advice`, `reference_flows`, `time_description`, `technological_applicability`,
-`mathematical_relations`, `lci_method_principle`, `lci_method_approaches`,
-`deviations_from_lci_method`, `modelling_constants`, `data_cutoff_principles`,
-`data_selection_principles`, `supply_coverage_percent`, and all 6 individual DQI indicators
-(`dqi_technological_representativeness`, `dqi_time_representativeness`,
-`dqi_geographical_representativeness`, `dqi_completeness`, `dqi_precision`,
-`dqi_methodological_appropriateness`).
+Search column legend: **K** = keyword index (name search) · **S** = semantic embedding · **F** = metadata filter
 
-**Excluded:** exchange flows (not available in metaDataOnly files), completeness section, compliance section, administrative info. See the next section for the rationale behind these exclusions.
+| # | JSON Key | ILCD / XLS Field Name | Viewer Section | Priority | Search | Notes |
+|---|---|---|---|---|---|---|
+| 1 | `uuid` | `common:UUID` | Identity | ✅ MUST | — | Unique dataset identifier |
+| 2 | `name_base` | `baseName` | Identity | ✅ MUST | K + S | Primary product/process name |
+| 3 | `synonyms` | `common:synonyms` | Identity | ✅ MUST | K | Alternative names |
+| 4 | `general_comment` | `common:generalComment` | Identity | ✅ MUST | — | High-level dataset description |
+| 5 | `classification` | `common:class` (all levels joined) | Identity | ✅ MUST | S + F | Category hierarchy, e.g. `Electronics / Passive components` |
+| 6 | `location` | `locationOfOperationSupplyOrProduction[@location]` | Location | ✅ MUST | F | Country/region code, e.g. `GLO`, `DE` — filter only, not embedded |
+| 7 | `geographical_representativeness_description` | `descriptionOfRestrictions` | Location | ✅ MUST | — | Scope of geographic coverage |
+| 8 | `reference_year` | `common:referenceYear` | Time | ✅ MUST | — | Data reference year |
+| 9 | `valid_until` | `common:dataSetValidUntil` | Time | ✅ MUST | — | Dataset expiry year |
+| 10 | `technology_description` | `technologyDescriptionAndIncludedProcesses` | Technology | ✅ MUST | — | Main process description (often 1,000–1,500 words); too long to embed directly — use 10a |
+| 10a | `technology_description_summary` | *(enriched — LLM output)* | Technology | 🔵 NICE | **S (primary)** | Plain-language LLM summary — primary embed target for semantic search |
+| 10b | `technology_description_formatted` | *(enriched — LLM output)* | Technology | 🔵 NICE | — | Markdown-formatted version — for reading, not embedding |
+| 11 | `dataset_type` | `typeOfDataSet` | Modelling | ✅ MUST | F | e.g. `LCI result`, `Partly terminated system` |
+| 12 | `process_type` | XLS col 11: *Dataset type* | Modelling | ✅ MUST | F | Process type, e.g. `Aggregated process`, `Unit process` |
+| 13 | `dqi_overall_quality` | `dataQualityIndicator[@name="Overall quality"]` | DQI | ✅ MUST | — | Overall data quality rating |
+| 14 | `name_functional_unit` | `functionalUnitFlowProperties` | Identity | 🔵 NICE | — | Functional unit or flow properties, e.g. `1 piece`, `<1kV` |
+| 15 | `name_treatment_standards_routes` | `treatmentStandardsRoutes` | Modelling | 🔵 NICE | — | e.g. `technology mix`, `production mix` |
+| 16 | `name_mix_and_location_types` | `mixAndLocationTypes` | Modelling | 🔵 NICE | — | e.g. `production mix, at plant` |
+| 17 | `use_advice` | `useAdviceForDataSet` | Notes | 🔵 NICE | — | Recommended use and limitations |
+| 18 | `reference_flows` | `referenceToReferenceFlow` | Notes | 🔵 NICE | — | Reference to the reference flow element |
+| 19 | `technological_applicability` | `technologicalApplicability` | Technology | 🔵 NICE | — | Technical purpose of the product or process |
+| 20 | `dqi_technological_representativeness` | `dataQualityIndicator[@name="Technological representativeness"]` | DQI | 🔵 NICE | — | DQI sub-rating |
+| 21 | `dqi_time_representativeness` | `dataQualityIndicator[@name="Time representativeness"]` | DQI | 🔵 NICE | — | DQI sub-rating |
+| 22 | `dqi_geographical_representativeness` | `dataQualityIndicator[@name="Geographical representativeness"]` | DQI | 🔵 NICE | — | DQI sub-rating |
+| 23 | `dqi_completeness` | `dataQualityIndicator[@name="Completeness"]` | DQI | 🔵 NICE | — | DQI sub-rating |
+| 24 | `dqi_precision` | `dataQualityIndicator[@name="Precision"]` | DQI | 🔵 NICE | — | DQI sub-rating |
+| 25 | `dqi_methodological_appropriateness` | `dataQualityIndicator[@name="Methodological appropriateness and consistency"]` | DQI | 🔵 NICE | — | DQI sub-rating |
 
-Full field mapping with XPaths and examples: `doc/field-mapping-draft.md`
+### Other Fields
+
+Shown in the viewer grouped together under a single **"Other"** section.
+
+| # | JSON Key | ILCD / XLS Field Name | Search | Notes |
+|---|---|---|---|---|
+| O1 | `lci_method_principle` | `LCIMethodPrinciple` | — | e.g. `Attributional`, `Consequential` |
+| O2 | `lci_method_approaches` | `LCIMethodApproaches` (list) | — | Allocation methods used |
+| O3 | `time_description` | `common:timeRepresentativenessDescription` | — | e.g. `annual average` |
+| O4 | `mathematical_relations` | `mathematicalRelations/modelDescription` | — | Parameter equations |
+| O5 | `deviations_from_lci_method` | `deviationsFromLCIMethodApproaches` | — | Deviations from the standard LCI method |
+| O6 | `modelling_constants` | `modellingConstants` | — | Fixed modelling assumptions |
+| O7 | `data_cutoff_principles` | `dataCutOffAndCompletenessPrinciples` | — | Cut-off rules, e.g. ≥99% mass and energy covered |
+| O8 | `data_selection_principles` | `dataSelectionAndCombinationPrinciples` | — | Data source selection methodology |
+| O9 | `supply_coverage_percent` | `percentageSupplyOrProductionCovered` | — | Supply/production coverage, e.g. `99.0` |
+| O10 | `source_url` | XLS col 28: *Website link* | — | Direct URL to the dataset on the Sphera portal |
+| O11 | `databases` | XLS col 16: *All standard DBs that contain this dataset* | **F** | Include/exclude datasets by licensed database (e.g. Core, Metals) |
+
+> O10–O11 (`source_url`, `databases`) come from the Sphera XLS manifest, not from the ILCD XML.
+
+### Database Names and Abbreviations
+
+The `databases` field lists the Sphera database products containing a dataset. The following databases are present in the current download (2026 edition). Abbreviations are used in the viewer list column.
+
+> **TODO:** Confirm or adjust abbreviations below.
+
+| Full name | Datasets | Abbreviation |
+|---|---|---|
+| MLC Database - Professional Core 2026 | 676 | Core |
+| MLC Database - Full US 2026 | 430 | US Full |
+| MLC Database - Manufacturing and End of Life 2026 | 102 | MfgEoL |
+| MLC Database - Construction 2026 | 75 | Construction |
+| MLC Database - Textile and Seat Covers 2026 | 33 | Textile |
+| MLC Database - Food and Renewables 2026 | 27 | Food |
+| MLC Database - Plastics 2026 | 15 | Plastics |
+| MLC Database - Chemicals 2026 | 13 | Chemicals |
+| MLC Database Premium - Manufacturing and End of Life 2026 | 6 | Prem MfgEoL |
+| MLC Database Premium - Energy 2026 | 5 | Prem Energy |
+| MLC Database - India 2026 | 5 | India |
+| MLC Database - Metals 2026 | 4 | Metals |
+| MLC Database Premium - Construction 2026 | 1 | Prem Construction |
+
+The viewer derives abbreviations automatically by stripping the `MLC Database - ` prefix, replacing `MLC Database Premium - ` with `Prem `, and removing the year suffix. No separate lookup table required.
+
+### Excluded (in ILCD, not extracted)
+
+| ILCD Section | Reason |
+|---|---|
+| Exchange flows (`exchanges`) | Not available — XMLs are `metaDataOnly="true"` |
+| Completeness | Verbose checklists, highly repetitive, low discovery value |
+| Compliance declarations | Regulatory references, not useful for content-based search |
+| Administrative info | Data generator contacts, version history, timestamps |
+
+### ChromaDB Search Design
+
+A query against the index combines three independent mechanisms:
+
+**1. Semantic search (vector embedding)**
+
+The embedded text is built from:
+- `technology_description_summary` (#10a) — primary, if enriched
+- Fallback (not enriched): `name_base` + `classification` + `general_comment`
+- `name_base` and `classification` are always prepended to anchor results
+
+This separates *what the process is* from *where it is* — so a query for "stainless steel" finds all steel processes regardless of region, then the filter narrows the result.
+
+**2. Keyword index (name search)**
+
+- `name_base` (#2) — exact/partial product name
+- `synonyms` (#3) — alternative names
+
+**3. Metadata filters (pre- or post-filter)**
+
+| Filter field | JSON Key | Example values |
+|---|---|---|
+| Region | `location` | `DE`, `GLO`, `EU`, `CN` |
+| Database | `databases` | `MLC Database - Professional Core 2026` |
+| Process type | `process_type` | `Aggregated process`, `Unit process` |
+| Data type | `dataset_type` | `LCI result`, `Partly terminated system` |
+
+Example query: *"stainless steel datasets in Europe, Core database only"*
+→ semantic search on "stainless steel" + filters: `location` ∈ {EU, DE, ...} AND `databases` contains "Core"
+
+> Full field mapping with XPaths and examples: `doc/field-mapping-draft.md`
 
 ---
 
@@ -133,7 +228,7 @@ Keeping the token footprint small matters when batch-processing hundreds of data
         │
         ▼
    dataset/output/{uuid}.xml      ← raw ILCD XML, never modified
-   dataset/output/{uuid}.json     ← flat parsed JSON
+   dataset/output/{uuid}.json     ← flat parsed JSON (36 fields)
 
 2. Re-parse (optional, if parser changes)
    reparse.py --all --force
@@ -141,16 +236,31 @@ Keeping the token footprint small matters when batch-processing hundreds of data
         ▼
    dataset/output/{uuid}.json     ← regenerated from saved XML
 
-3. View
+3. Index (ChromaDB semantic search)
+   index.py [--output dataset/output] [--db dataset/chroma]
+        │
+        ▼
+   dataset/chroma/                ← ChromaDB vector index
+        └── powered by sentence-transformers (local embeddings)
+            text indexed: name_base + classification + general_comment
+            metadata stored: all JSON fields (for filtering)
+
+4. View
    view.py                        ← terminal list
    view.py <uuid>                 ← terminal detail
    viewer/app.py                  ← web browser at localhost:5000
         │
-        └── select datasets → ask LLM question → ranked results table
-            ⬇ Export .md button → download query results as markdown
-            ⬇ Export visible as .md → download filtered list as markdown
+        ├── Semantic Search bar → /search (ChromaDB) → filters visible list
+        ├── select datasets → Ask LLM → /query → ranked results table
+        │       ⬇ Export .md button → download query results as markdown
+        │       ⬇ Export visible as .md → download filtered list as markdown
+        └── chat panel (fixed bottom bar) → /chat (multi-turn, history-aware)
+                → ranked bubbles: rank. name · location · process_type — score/5
+                → assistant bubbles rendered with renderMarkdown() (bold, lists, headers)
+                → spinning ⏳ "Thinking…" indicator while LLM responds
+                → Ask button disables during LLM call
 
-4. Enrich
+5. Enrich
    enrich.py --all --workers 4 [--provider anthropic|vio]
         │
         ├── SHA-256 dedup scan (no API call for duplicate texts)
@@ -163,6 +273,73 @@ Keeping the token footprint small matters when batch-processing hundreds of data
    dataset/enriched/{uuid}.json   ← enrichment sidecar, original untouched
    dataset/dedup/text_cache.json  ← hash → uuid dedup cache
 ```
+
+---
+
+## Web Viewer — API Endpoints
+
+The Flask viewer (`viewer/app.py`) exposes four JSON endpoints used by the frontend.
+
+### `POST /query`
+
+Single-turn LLM ranking query over a caller-supplied list of datasets.
+
+Request body:
+```json
+{
+  "question": "Which datasets cover recycled aluminium?",
+  "uuids": ["uuid1", "uuid2", ...],
+  "fields": ["classification", "location", "year", "description"]  // optional
+}
+```
+
+Response: `{"results": [{"uuid": ..., "name": ..., "rank": 1, "relevance_score": 4, "comment": "..."}, ...]}`.
+
+### `POST /search`
+
+Semantic similarity search against the ChromaDB index. Returns a ranked list of UUIDs and metadata — used by the Semantic Search bar to pre-filter the visible dataset list.
+
+Request body:
+```json
+{
+  "question": "aluminium with post-consumer recycling content",
+  "filters": {"process_type": "Aggregated process"}  // optional ChromaDB where-filter
+}
+```
+
+Response: `{"uuids": [...], "matches": [{metadata dicts}]}`.  Returns up to 20 results.
+
+### `POST /chat`
+
+Multi-turn conversational Q&A. Behaves like `/query` but accepts a conversation `history` array and enriches each result with `location` and `process_type` metadata fields for display in the chat bubble.
+
+Request body:
+```json
+{
+  "question": "Which of these cover steel production?",
+  "uuids": ["uuid1", "uuid2", ...],
+  "history": [
+    {"role": "user", "content": "..."},
+    {"role": "assistant", "content": "..."}
+  ],
+  "fields": [...]  // optional
+}
+```
+
+Response results include two extra keys compared to `/query`:
+```json
+{"uuid": "...", "name": "...", "rank": 1, "relevance_score": 4, "comment": "...",
+ "location": "DE", "process_type": "Aggregated process"}
+```
+
+The chat bubble in the UI renders each result as:
+```
+**rank. name** · location · process_type — score/5
+
+comment text
+```
+
+Assistant bubbles are rendered with `renderMarkdown()` (supports bold, paragraphs, headers `##`/`###`, and bullet lists).
 
 ---
 
@@ -315,6 +492,7 @@ Many LCA datasets (especially electronics components from the same manufacturer)
 |---|---|---|
 | `download.py` | `python download.py --urls urls.txt --cookie-file cookie.txt` | Download datasets from Sphera portal |
 | `reparse.py` | `python reparse.py --all` | Re-parse saved XML files → regenerate JSON without re-downloading |
+| `index.py` | `python index.py` | Build or update ChromaDB vector index from JSON files |
 | `enrich.py` | `python enrich.py --all --workers 4` | Enrich all datasets using Claude API |
 | `view.py` | `python view.py` / `python view.py <uuid>` | Terminal viewer: list all datasets or inspect one |
 | `viewer/app.py` | `python viewer/app.py` | Web viewer on localhost:5000 |
@@ -333,6 +511,11 @@ Many LCA datasets (especially electronics components from the same manufacturer)
 **`reparse.py`**
 - `--uuid <uuid>` / `--all` — single or all
 - `--force` — overwrite existing JSON
+
+**`index.py`**
+- `--output <dir>` — dataset/output directory (default: `dataset/output/`)
+- `--enriched <dir>` — dataset/enriched directory (default: `dataset/enriched/`, optional)
+- `--db <dir>` — ChromaDB persistence directory (default: `dataset/chroma/`)
 
 **`enrich.py`**
 - `--uuid <uuid>` / `--all` — single or all
@@ -354,16 +537,18 @@ Many LCA datasets (especially electronics components from the same manufacturer)
 ```
 project root
 ├── download.py                     Download + parse pipeline CLI
-├── reparse.py                  Re-parse saved XMLs → regenerate JSON
-├── enrich.py                   LLM enrichment CLI
-├── view.py                     Terminal viewer
-├── requirements.txt            Python dependencies
-├── .env.example                API key template (copy to .env)
+├── reparse.py                      Re-parse saved XMLs → regenerate JSON
+├── index.py                        Build / update ChromaDB vector index
+├── enrich.py                       LLM enrichment CLI
+├── view.py                         Terminal viewer
+├── requirements.txt                Python dependencies
+├── .env.example                    API key template (copy to .env)
 │
 ├── core/
 │   ├── downloader.py           HTTP fetch with cookie/User-Agent auth
 │   ├── parser.py               ILCD XML → flat dict (lxml, XPath)
 │   ├── exporter.py             Write .xml + .json to output dir
+│   ├── chroma_store.py         ChromaDB index builder: build_index()
 │   ├── enricher.py             clean_text, count_words, count_chars,
 │   │                           verify_counts, enrich_dataset,
 │   │                           SUMMARY_SYSTEM / FORMAT_SYSTEM prompts
@@ -379,7 +564,9 @@ project root
 │   └── templates/
 │       ├── base.html           Nav bar, shared CSS, layout shell
 │       ├── index.html          Dataset list: cards + table view, search,
-│       │                       LLM query panel, markdown export buttons
+│       │                       semantic search bar, LLM query panel,
+│       │                       chat panel (multi-turn, history-aware),
+│       │                       markdown export buttons
 │       ├── dataset.html        Dataset detail: collapsible sections,
 │       │                       enrichment summary card, formatted/original
 │       │                       toggle, inline markdown renderer
@@ -390,10 +577,17 @@ project root
 │   ├── test_exporter.py        Exporter unit tests
 │   ├── test_enricher.py        Enricher unit tests (mocked LLMClient, 47 tests)
 │   ├── test_llm.py             LLMClient unit tests — Anthropic + VIO (16 tests)
-│   └── test_query.py           Query engine + Flask route tests (26 tests)
+│   ├── test_query.py           Query engine + Flask route tests (26 tests)
+│   ├── test_chroma_store.py    ChromaDB store unit tests
+│   ├── test_xls_manifest.py    XLS manifest parsing tests
+│   ├── test_download_xls.py    XLS download integration tests
+│   ├── test_chat_endpoint.py   Chat API endpoint tests
+│   ├── test_search_endpoint.py Search API endpoint tests
+│   └── test_query_history.py   Query history tests
 │
 ├── dataset/
 │   ├── output/                 Downloaded XMLs + parsed JSONs
+│   ├── chroma/                 ChromaDB vector index (gitignored)
 │   ├── enriched/               LLM enrichment sidecars (gitignored)
 │   └── dedup/                  SHA-256 text dedup cache
 │

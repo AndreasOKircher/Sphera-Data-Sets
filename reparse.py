@@ -10,6 +10,24 @@ from core.parser import parse_dataset
 OUTPUT_DIR = Path(__file__).parent / "dataset" / "output"
 
 
+# Fields sourced from the XLS manifest (not present in ILCD XML).
+# Preserved from existing JSON when re-parsing so they are not lost.
+_XLS_FIELDS = ("source_url", "process_type", "databases")
+
+
+def _preserve_xls_fields(data: dict, json_path: Path) -> None:
+    """Copy XLS-sourced fields from existing JSON into data if present."""
+    if not json_path.exists():
+        return
+    try:
+        existing = json.loads(json_path.read_text(encoding="utf-8"))
+        for field in _XLS_FIELDS:
+            if field in existing:
+                data[field] = existing[field]
+    except Exception:
+        pass
+
+
 def reparse_one(uuid: str, force: bool) -> None:
     xml_path  = OUTPUT_DIR / f"{uuid}.xml"
     json_path = OUTPUT_DIR / f"{uuid}.json"
@@ -24,6 +42,7 @@ def reparse_one(uuid: str, force: bool) -> None:
 
     try:
         data = parse_dataset(xml_path.read_bytes())
+        _preserve_xls_fields(data, json_path)
         name = (data.get("name_base") or "")[:60]
         json_path.write_text(
             json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
@@ -64,6 +83,7 @@ def main() -> None:
             continue
         try:
             data = parse_dataset((OUTPUT_DIR / f"{uuid}.xml").read_bytes())
+            _preserve_xls_fields(data, json_path)
             name = (data.get("name_base") or "")[:60]
             json_path.write_text(
                 json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"

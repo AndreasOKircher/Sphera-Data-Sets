@@ -9,14 +9,14 @@ MUST_FIELDS = {
     "uuid", "name_base", "synonyms", "general_comment", "location",
     "geographical_representativeness_description", "reference_year",
     "valid_until", "technology_description", "dataset_type",
-    "lci_method_principle", "lci_method_approaches", "dqi_overall_quality",
-    "classification",
+    "dqi_overall_quality", "classification",
 }
 
 NICE_FIELDS = {
     "name_treatment_standards_routes", "name_mix_and_location_types",
     "name_functional_unit", "use_advice", "reference_flows",
     "time_description", "technological_applicability", "mathematical_relations",
+    "lci_method_principle", "lci_method_approaches",
     "deviations_from_lci_method", "modelling_constants", "data_cutoff_principles",
     "data_selection_principles", "supply_coverage_percent",
     "dqi_technological_representativeness", "dqi_time_representativeness",
