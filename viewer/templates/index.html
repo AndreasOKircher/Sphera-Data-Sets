@@ -57,43 +57,37 @@
 {% if not datasets %}
   <p style="color:#666;">No datasets found in <code>dataset/output/</code>. Run the downloader first.</p>
 {% else %}
-  <div id="results-panel" style="display:none; margin-bottom:20px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-      <h2 style="font-size:16px; font-weight:bold;" id="results-question-label"></h2>
-      <div style="display:flex; gap:6px;">
-        <button id="btn-export-md" onclick="exportMarkdown()" style="display:none;
-          padding:3px 10px; font-size:12px; border:1px solid #0057b8; border-radius:4px;
-          background:#fff; color:#0057b8; cursor:pointer;">⬇ Export .md</button>
-        <button onclick="dismissResults()"
-          style="padding:3px 10px; font-size:12px; border:1px solid #ccc; border-radius:4px;
-                 background:#fff; cursor:pointer;">✕ Dismiss</button>
+  <div id="conv-panel" style="display:none; border:1px solid #1a1a2e; border-radius:8px; margin-bottom:16px; overflow:hidden;">
+    <div style="background:#1a1a2e; color:#fff; padding:6px 14px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+      <span style="font-weight:bold; font-size:13px;">💬 LLM Query</span>
+      <span id="conv-sel-count" style="font-size:12px; opacity:.75;"></span>
+      <span style="font-size:11px; opacity:.5;">· list order fixed · scores update per question</span>
+      <button onclick="clearConversation()"
+        style="margin-left:auto; background:transparent; border:1px solid rgba(255,255,255,.35);
+               color:#fff; border-radius:3px; padding:2px 10px; font-size:12px; cursor:pointer;">
+        ✕ Clear &amp; new search
+      </button>
+    </div>
+    <div id="conv-pills-row" style="padding:8px 14px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; background:#fff; border-top:1px solid #eee;">
+      <span id="conv-arrow" style="color:#bbb; font-size:16px; display:none;">→</span>
+      <div style="flex:1; min-width:220px; display:flex; gap:6px; align-items:center;">
+        <input id="conv-question" type="text"
+          placeholder="Ask a question about the selected datasets…"
+          style="flex:1; padding:6px 12px; border:1px solid #ccc; border-radius:4px; font-size:13px;"
+          onkeydown="if(event.key==='Enter') askLLM()">
+        <button id="ask-btn" onclick="askLLM()"
+          style="padding:6px 16px; background:#0057b8; color:#fff; border:none;
+                 border-radius:4px; font-size:13px; cursor:pointer; white-space:nowrap;">
+          Ask
+        </button>
       </div>
     </div>
-    <div id="results-loading" style="display:none; text-align:center; padding:28px 0;">
-      <div style="display:inline-block; font-size:14px; color:#555;">
-        <span style="display:inline-block; animation:spin 1s linear infinite; margin-right:8px;">⏳</span>
-        Asking LLM — this may take a few seconds…
-      </div>
-    </div>
-    <div id="results-error" style="color:#c00; font-size:14px; display:none;"></div>
-    <table id="results-table" style="width:100%; border-collapse:collapse; background:#fff;
-      border:1px solid #ddd; border-radius:8px; overflow:hidden; font-size:13px; display:none;">
-      <thead>
-        <tr style="background:#f0f4ff; font-weight:bold; text-align:left;">
-          <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:44px;">#</th>
-          <th style="padding:10px 12px; border-bottom:1px solid #ddd;">Dataset</th>
-          <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:60px; text-align:center;">Score</th>
-        </tr>
-      </thead>
-      <tbody id="results-tbody"></tbody>
-    </table>
-    <div id="results-usage" style="display:none; margin-top:6px; font-size:12px; color:#888;"></div>
   </div>
 
   <!-- Card view -->
   <div id="view-cards" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(340px,1fr)); gap:16px;">
     {% for d in datasets %}
-    <a href="/dataset/{{ d.uuid }}" style="display:block; text-decoration:none; color:inherit;"
+    <a href="/dataset/{{ d.uuid }}" onclick="saveState()" style="display:block; text-decoration:none; color:inherit;"
        data-name="{{ (d.name_base or '') | lower }}"
        data-synonyms="{{ (d.synonyms or '') | lower }}"
        data-summary="{{ (d._summary or '') | lower }}"
@@ -150,11 +144,13 @@
           <th style="padding:10px 12px; border-bottom:1px solid #ddd; width:130px;">Database<span class="si" style="display:none;"></span></th>
           <th onclick="sortTable(6,false)" style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:110px;">DQI <span class="si">⇅</span></th>
           <th onclick="sortTable(7,true)"  style="padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:75px;">Supply <span class="si">⇅</span></th>
+          <th id="th-score" style="display:none; padding:10px 12px; border-bottom:1px solid #ddd; cursor:pointer; user-select:none; width:75px; text-align:center; background:#eff6ff;">Score</th>
+          <th id="th-comment" style="display:none; padding:10px 12px; border-bottom:1px solid #ddd; width:260px;">Comment</th>
         </tr>
       </thead>
       <tbody>
         {% for d in datasets %}
-        <tr onclick="window.location='/dataset/{{ d.uuid }}'" style="cursor:pointer; border-bottom:1px solid #f0f0f0;"
+        <tr onclick="saveState(); window.location='/dataset/{{ d.uuid }}'" style="cursor:pointer; border-bottom:1px solid #f0f0f0;"
             data-name="{{ (d.name_base or '') | lower }}"
             data-synonyms="{{ (d.synonyms or '') | lower }}"
             data-summary="{{ (d._summary or '') | lower }}"
@@ -190,6 +186,8 @@
               <span class="badge {{ supply_class }}">{{ d.supply_coverage_percent | int }}%</span>
             {% else %}—{% endif %}
           </td>
+          <td class="td-score" data-uuid="{{ d.uuid }}" style="display:none; padding:8px 12px; text-align:center; vertical-align:top;"></td>
+          <td class="td-comment" data-uuid="{{ d.uuid }}" style="display:none; font-style:italic; font-size:11px; color:#555; vertical-align:top; padding:8px 12px; line-height:1.5;"></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -359,6 +357,7 @@ function setView(v) {
   document.getElementById('btn-cards').style.color = v === 'cards' ? '#fff' : '#222';
   document.getElementById('btn-list').style.background = v === 'list' ? '#1a1a2e' : '#fff';
   document.getElementById('btn-list').style.color = v === 'list' ? '#fff' : '#222';
+  saveState();
 }
 
 function filterAll() {
@@ -388,18 +387,16 @@ function filterAll() {
   }
 }
 
-// Restore search term on back-navigation
-(function() {
+document.addEventListener('DOMContentLoaded', function() {
   const saved1 = sessionStorage.getItem('search') || '';
   const saved2 = sessionStorage.getItem('search-kw') || '';
   if (saved1) document.getElementById('search').value = saved1;
   if (saved2) document.getElementById('search-kw').value = saved2;
   if (saved1 || saved2) filterAll();
-})();
+  restoreState();
+});
 
 const selectedUUIDs = new Set();
-let _lastQuestion = '';
-let _lastResults = [];
 
 // Global dataset lookup — built once at page load from server-rendered data
 const datasetMap = {};
@@ -415,43 +412,8 @@ datasetMap["{{ d.uuid }}"] = {
 };
 {% endfor %}
 
-function exportMarkdown() {
-  const now = new Date();
-  const ts = now.toISOString().slice(0, 16).replace('T', ' ');
-  const lines = [
-    '# LCA Dataset Query Results',
-    '',
-    `**Question:** ${_lastQuestion}`,
-    '',
-    `_Generated: ${ts}_`,
-    '',
-    '---',
-    '',
-    '| # | Dataset | Score | Comment |',
-    '|---|---------|-------|---------|',
-  ];
-  _lastResults.forEach(r => {
-    const name = (r.name || r.uuid).replace(/\|/g, '\\|');
-    const comment = (r.comment || '').replace(/\|/g, '\\|');
-    lines.push(`| ${r.rank} | ${name} | ${r.relevance_score}/5 | ${comment} |`);
-  });
-  lines.push('', '---', '', '## Details', '');
-  _lastResults.forEach(r => {
-    const score = Number(r.relevance_score) || 0;
-    lines.push(`### #${r.rank} — ${r.name || r.uuid} (${score}/5)`);
-    lines.push(`**UUID:** \`${r.uuid}\``);
-    lines.push('');
-    lines.push(r.comment || '');
-    lines.push('');
-  });
-  const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `lca-query-${now.toISOString().slice(0,10)}.md`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
+let _turns = [];   // [{question, results:[{uuid,name,rank,relevance_score,comment,location,process_type}]}]
+let _activeQ = -1; // index of currently displayed turn
 
 function toggleSelect(uuid, checked) {
   if (checked) { selectedUUIDs.add(uuid); } else { selectedUUIDs.delete(uuid); }
@@ -480,121 +442,211 @@ function toggleSelectAllVisible(checked) {
   updateSelectionUI();
 }
 
-async function submitQuery() {
-  const question = document.getElementById('query-question').value.trim();
-  if (!question) { alert('Enter a question first.'); return; }
+function showScoreColumns(show) {
+  const d = show ? '' : 'none';
+  document.getElementById('th-score').style.display = d;
+  document.getElementById('th-comment').style.display = d;
+  document.querySelectorAll('.td-score, .td-comment').forEach(el => el.style.display = d);
+}
+
+function renderTurnScores(turnIdx) {
+  _activeQ = turnIdx;
+  const turn = _turns[turnIdx];
+  if (!turn) return;
+
+  // Update score column header
+  document.getElementById('th-score').textContent = `Q${turnIdx + 1} Score`;
+
+  const resultMap = {};
+  turn.results.forEach(r => { resultMap[r.uuid] = r; });
+
+  // Reset all rows
+  document.querySelectorAll('#view-list tbody tr').forEach(row => {
+    const uuid = row.dataset.uuid;
+    const scoreCell  = row.querySelector('.td-score');
+    const commentCell = row.querySelector('.td-comment');
+    if (!scoreCell) return;
+    if (resultMap[uuid]) {
+      row.style.opacity = '';
+      const r = resultMap[uuid];
+      const score = Number(r.relevance_score) || 0;
+      const scoreColor = score >= 4 ? '#065f46' : score >= 2 ? '#92400e' : '#6b7280';
+      const scoreBg    = score >= 4 ? '#d1fae5' : score >= 2 ? '#fef3c7' : '#e5e7eb';
+      const badge = document.createElement('span');
+      badge.style.cssText = `display:inline-block; padding:2px 8px; border-radius:3px; background:${scoreBg}; color:${scoreColor}; font-weight:bold; font-size:12px;`;
+      badge.textContent = `${score}/5`;
+      scoreCell.innerHTML = '';
+      scoreCell.appendChild(badge);
+      commentCell.textContent = r.comment || '';
+    } else {
+      row.style.opacity = '0.45';
+      scoreCell.innerHTML = '<span style="color:#bbb; font-size:11px;">—</span>';
+      commentCell.textContent = '';
+    }
+  });
+
+  // Update pill active state
+  document.querySelectorAll('.q-pill').forEach((pill, i) => {
+    if (i === turnIdx) {
+      pill.style.border = '2px solid #0057b8';
+      pill.style.background = '#eff6ff';
+      pill.style.opacity = '1';
+    } else {
+      pill.style.border = '1px solid #bbb';
+      pill.style.background = '#f5f5f5';
+      pill.style.opacity = '0.7';
+    }
+  });
+
+  saveState();
+}
+
+function addTurnPill(idx) {
+  const turn = _turns[idx];
+  const q = turn.question.length > 42 ? turn.question.slice(0, 42) + '…' : turn.question;
+  const top = turn.results[0];
+  const topSummary = top ? `${top.name ? top.name.split(',')[0] : ''} ${top.relevance_score ?? '?'}/5` : '';
+
+  const pill = document.createElement('div');
+  pill.className = 'q-pill';
+  pill.dataset.turn = String(idx);
+  pill.style.cssText = 'border:1px solid #bbb; border-radius:6px; padding:5px 10px; ' +
+    'background:#f5f5f5; cursor:pointer; min-width:150px; max-width:220px; opacity:.7;';
+
+  const lbl = document.createElement('div');
+  lbl.style.cssText = 'font-size:9px; color:#888; text-transform:uppercase; font-weight:bold; margin-bottom:1px;';
+  lbl.textContent = `Q${idx + 1}`;
+
+  const qDiv = document.createElement('div');
+  qDiv.style.cssText = 'font-weight:bold; color:#333; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
+  qDiv.textContent = q;
+
+  pill.appendChild(lbl);
+  pill.appendChild(qDiv);
+
+  if (topSummary) {
+    const sumDiv = document.createElement('div');
+    sumDiv.style.cssText = 'font-size:10px; color:#777; margin-top:2px; font-style:italic;';
+    sumDiv.textContent = '↑ ' + topSummary;
+    pill.appendChild(sumDiv);
+  }
+  pill.onclick = () => setActiveTurn(idx);
+
+  // Insert before the arrow separator
+  const arrow = document.getElementById('conv-arrow');
+  document.getElementById('conv-pills-row').insertBefore(pill, arrow);
+  arrow.style.display = '';
+}
+
+function setActiveTurn(idx) {
+  renderTurnScores(idx);
+}
+
+async function askLLM() {
+  const question = document.getElementById('conv-question').value.trim();
+  if (!question) { document.getElementById('conv-question').focus(); return; }
   if (selectedUUIDs.size === 0) { alert('Select at least one dataset.'); return; }
 
-  const btn = document.querySelector('#selection-panel button:last-child');
-  btn.textContent = '⏳ Asking…';
-  btn.disabled = true;
+  const btn = document.getElementById('ask-btn');
+  if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
 
-  const panel = document.getElementById('results-panel');
-  const errorEl = document.getElementById('results-error');
-  const loadingEl = document.getElementById('results-loading');
-  const tableEl = document.getElementById('results-table');
-  const tbody = document.getElementById('results-tbody');
-  const label = document.getElementById('results-question-label');
-  const usageEl = document.getElementById('results-usage');
-
-  _lastQuestion = question;
-  _lastResults = [];
-  document.getElementById('btn-export-md').style.display = 'none';
-  label.textContent = `Q: ${question}`;
-  errorEl.style.display = 'none';
-  loadingEl.style.display = 'block';
-  tableEl.style.display = 'none';
-  usageEl.style.display = 'none';
-  tbody.innerHTML = '';
-  panel.style.display = 'block';
-  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Build history from previous turns
+  const history = [];
+  _turns.forEach(t => {
+    history.push({ role: 'user', content: t.question });
+    const summary = t.results.slice(0, 3)
+      .map(r => `${r.name} ${r.relevance_score}/5: ${r.comment}`)
+      .join('; ');
+    history.push({ role: 'assistant', content: summary });
+  });
 
   try {
-    const resp = await fetch('/query', {
+    const resp = await fetch('/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, uuids: [...selectedUUIDs], fields: _selectedQueryFields() }),
+      body: JSON.stringify({ question, uuids: [...selectedUUIDs], history }),
     });
     const data = await resp.json();
-    loadingEl.style.display = 'none';
-    if (!resp.ok || data.error) {
-      errorEl.textContent = data.error || `Server error ${resp.status}`;
-      errorEl.style.display = '';
-    } else if (!data.results || data.results.length === 0) {
-      errorEl.textContent = 'The LLM returned no ranked results. Try rephrasing the question.';
-      errorEl.style.display = '';
-    } else {
-      data.results.forEach(r => {
-        const score = Number(r.relevance_score) || 0;
-        const scoreColor = score >= 4 ? '#065f46' : score >= 2 ? '#92400e' : '#6b7280';
-        const scoreBg   = score >= 4 ? '#d1fae5' : score >= 2 ? '#fef3c7' : '#e5e7eb';
-        const meta = datasetMap[r.uuid] || {};
+    if (data.error) { alert('LLM error: ' + data.error); return; }
 
-        const tr = document.createElement('tr');
-        tr.style.borderBottom = '1px solid #f0f0f0';
-
-        // Rank cell
-        const tdRank = document.createElement('td');
-        tdRank.style.cssText = `padding:10px 12px; text-align:center; font-size:16px;
-          font-weight:bold; color:${scoreColor}; vertical-align:top;`;
-        tdRank.textContent = String(r.rank ?? '—');
-
-        // Name + meta + comment cell
-        const tdName = document.createElement('td');
-        tdName.style.cssText = 'padding:10px 12px; vertical-align:top;';
-
-        const a = document.createElement('a');
-        a.href = `/dataset/${encodeURIComponent(r.uuid)}`;
-        a.style.cssText = 'color:#0057b8; font-weight:bold; font-size:14px; display:block; margin-bottom:3px;';
-        a.textContent = r.name || r.uuid;
-
-        const sub = document.createElement('div');
-        sub.style.cssText = 'font-size:11px; color:#888; margin-bottom:5px;';
-        const subParts = [meta.classification, meta.location, meta.process_type].filter(Boolean);
-        sub.textContent = subParts.join(' · ');
-
-        const comment = document.createElement('div');
-        comment.style.cssText = 'font-size:12px; color:#555; font-style:italic; line-height:1.5;';
-        comment.textContent = r.comment || '';
-
-        tdName.append(a, sub, comment);
-
-        // Score cell
-        const span = document.createElement('span');
-        span.style.cssText = `display:inline-block; padding:4px 10px; border-radius:4px;
-          background:${scoreBg}; color:${scoreColor}; font-weight:bold; font-size:13px;`;
-        span.textContent = `${score}/5`;
-        const tdScore = document.createElement('td');
-        tdScore.style.cssText = 'padding:10px 12px; text-align:center; vertical-align:top;';
-        tdScore.appendChild(span);
-
-        tr.append(tdRank, tdName, tdScore);
-        tbody.appendChild(tr);
-      });
-      _lastResults = data.results;
-      document.getElementById('btn-export-md').style.display = '';
-      tableEl.style.display = '';
-      if (data.usage) {
-        const u = data.usage;
-        let msg = `Tokens: ${u.input_tokens.toLocaleString()} in · ${u.output_tokens.toLocaleString()} out`;
-        if (u.cache_read_input_tokens) msg += ` · ${u.cache_read_input_tokens.toLocaleString()} from cache`;
-        if (u.cache_creation_input_tokens) msg += ` · ${u.cache_creation_input_tokens.toLocaleString()} written to cache`;
-        usageEl.textContent = msg;
-        usageEl.style.display = '';
-      }
-    }
+    _turns.push({ question, results: data.results || [] });
+    const newIdx = _turns.length - 1;
+    addTurnPill(newIdx);
+    showScoreColumns(true);
+    renderTurnScores(newIdx);
+    document.getElementById('conv-question').value = '';
   } catch (err) {
-    loadingEl.style.display = 'none';
-    errorEl.textContent = `Request failed: ${err.message}`;
-    errorEl.style.display = '';
+    alert('Request failed: ' + err.message);
   } finally {
-    btn.textContent = 'Ask LLM';
-    btn.disabled = false;
+    if (btn) { btn.textContent = 'Ask'; btn.disabled = false; }
   }
 }
 
-function dismissResults() {
-  document.getElementById('results-panel').style.display = 'none';
+function clearConversation() {
+  _turns = [];
+  _activeQ = -1;
+  selectedUUIDs.clear();
+  document.querySelectorAll('input[type=checkbox][data-uuid]').forEach(cb => cb.checked = false);
+  const allCb = document.getElementById('select-all-cb');
+  if (allCb) allCb.checked = false;
+  document.querySelectorAll('.q-pill').forEach(p => p.remove());
+  const arrow = document.getElementById('conv-arrow');
+  if (arrow) arrow.style.display = 'none';
+  showScoreColumns(false);
+  document.querySelectorAll('#view-list tbody tr').forEach(row => row.style.opacity = '');
+  document.getElementById('conv-panel').style.display = 'none';
+  // saveState() will overwrite turns/activeQ/selectedUUIDs with the now-empty state
+  saveState();
+}
+
+function saveState() {
+  try {
+    sessionStorage.setItem('view', currentView);
+    sessionStorage.setItem('turns', JSON.stringify(_turns));
+    sessionStorage.setItem('activeQ', String(_activeQ));
+    sessionStorage.setItem('selectedUUIDs', JSON.stringify([...selectedUUIDs]));
+  } catch(e) { /* quota */ }
+}
+
+function restoreState() {
+  // 1. View mode (fixes back-button bug)
+  const view = sessionStorage.getItem('view') || 'cards';
+  setView(view);
+
+  // 2. Search terms (already handled inline — keep existing logic)
+
+  // 3. Selections
+  try {
+    const savedUUIDs = JSON.parse(sessionStorage.getItem('selectedUUIDs') || '[]');
+    savedUUIDs.forEach(uuid => {
+      selectedUUIDs.add(uuid);
+      document.querySelectorAll(`input[data-uuid="${uuid}"]`).forEach(cb => cb.checked = true);
+    });
+  } catch(e) {}
+
+  // 4. Turns + conversation
+  try {
+    const savedTurns = JSON.parse(sessionStorage.getItem('turns') || '[]');
+    const savedActiveQ = parseInt(sessionStorage.getItem('activeQ') || '-1');
+    if (savedTurns.length > 0) {
+      _turns = savedTurns;
+      savedTurns.forEach((_, i) => addTurnPill(i));
+      showScoreColumns(true);
+      if (savedActiveQ >= 0 && savedActiveQ < _turns.length) {
+        renderTurnScores(savedActiveQ);
+      } else {
+        renderTurnScores(_turns.length - 1);
+      }
+    }
+  } catch(e) {}
+
+  // Show the panel if we have turns, even without active selections
+  if (_turns.length > 0) {
+    const panel = document.getElementById('conv-panel');
+    if (panel) panel.style.display = '';
+  }
+
+  updateSelectionUI();
 }
 
 function exportVisibleMd() {
@@ -667,177 +719,21 @@ function exportVisibleMd() {
   URL.revokeObjectURL(url);
 }
 
-let _chatHistory = [];
-
-function showChatPanel() {
-  const wrapper = document.getElementById("chat-panel-wrapper");
-  if (wrapper) wrapper.style.display = "block";
-}
-
-async function doChat() {
-  const question = document.getElementById("query-question").value.trim();
-  if (!question || selectedUUIDs.size === 0) {
-    if (selectedUUIDs.size === 0) alert("Select at least one dataset.");
-    return;
-  }
-  showChatPanel();
-  appendChatBubble("user", question);
-  const thinkingEl = appendThinkingBubble();
-
-  const askBtn = document.querySelector('[onclick="doChat()"]');
-  if (askBtn) { askBtn.disabled = true; askBtn.textContent = '…'; }
-
-  const body = {
-    question,
-    uuids: [...selectedUUIDs],
-    history: _chatHistory,
-  };
-
-  try {
-    const resp = await fetch("/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const data = await resp.json();
-    thinkingEl.remove();
-    if (data.error) {
-      appendChatBubble("assistant", "Error: " + data.error);
-      return;
-    }
-    const answer = (data.results || [])
-      .map(r => {
-        const meta = [r.location, r.process_type].filter(Boolean).join(' · ');
-        const header = meta ? `**${r.rank}. ${r.name}** · ${meta} — ${r.relevance_score}/5`
-                            : `**${r.rank}. ${r.name}** — ${r.relevance_score}/5`;
-        return `${header}\n\n${r.comment}`;
-      })
-      .join("\n\n");
-    appendChatBubble("assistant", answer || "(no results)");
-    _chatHistory.push({ role: "user", content: question });
-    _chatHistory.push({ role: "assistant", content: answer });
-    document.getElementById("query-question").value = "";
-  } finally {
-    if (askBtn) { askBtn.disabled = false; askBtn.textContent = 'Ask'; }
-  }
-}
-
-function appendChatBubble(role, text) {
-  const panel = document.getElementById("chat-panel");
-  if (!panel) return;
-  const div = document.createElement("div");
-  div.style.cssText = role === "user"
-    ? "text-align:right; margin-bottom:6px;"
-    : "text-align:left; margin-bottom:6px;";
-  const span = document.createElement("span");
-  span.style.cssText = `display:inline-block; padding:4px 10px; border-radius:4px; max-width:80%;
-    white-space:pre-wrap; text-align:left; font-size:12px;
-    background:${role === "user" ? "#0057b8" : "#e5e7eb"};
-    color:${role === "user" ? "#fff" : "#222"};`;
-  if (role === "assistant") {
-    span.innerHTML = renderMarkdown(text);
-  } else {
-    span.textContent = text;
-  }
-  div.appendChild(span);
-  panel.appendChild(div);
-  panel.scrollTop = panel.scrollHeight;
-  return div;
-}
-
-function appendThinkingBubble() {
-  const panel = document.getElementById("chat-panel");
-  const div = document.createElement("div");
-  div.style.cssText = "text-align:left; margin-bottom:6px;";
-  const span = document.createElement("span");
-  span.style.cssText = "display:inline-block; padding:4px 10px; border-radius:4px; font-size:12px; background:#e5e7eb; color:#888;";
-  span.innerHTML = '<span style="display:inline-block;animation:spin 1s linear infinite;">⏳</span> Thinking…';
-  div.appendChild(span);
-  panel.appendChild(div);
-  panel.scrollTop = panel.scrollHeight;
-  return div;
-}
-
-function clearChat() {
-  _chatHistory = [];
-  const panel = document.getElementById("chat-panel");
-  if (panel) panel.innerHTML = "";
-  const wrapper = document.getElementById("chat-panel-wrapper");
-  if (wrapper) wrapper.style.display = "none";
-}
-
 function updateSelectionUI() {
   const n = selectedUUIDs.size;
-  const panel = document.getElementById('selection-panel');
-  const countEl = document.getElementById('sel-count');
-  if (n === 0) {
-    panel.style.display = 'none';
-    const chatWrapper = document.getElementById("chat-panel-wrapper");
-    if (chatWrapper) chatWrapper.style.display = "none";
-  } else {
-    panel.style.display = 'flex';
-    panel.style.alignItems = 'center';
-    panel.style.gap = '12px';
-    panel.style.flexWrap = 'wrap';
-    countEl.textContent = `${n} dataset${n === 1 ? '' : 's'} selected`;
-  }
+  const panel = document.getElementById('conv-panel');
+  if (panel) panel.style.display = n > 0 ? '' : 'none';
+  const countEl = document.getElementById('conv-sel-count');
+  if (countEl) countEl.textContent = `${n} dataset${n === 1 ? '' : 's'} selected`;
+
+  // Sync card border highlights
   document.querySelectorAll('#view-cards [id^="card-"]').forEach(card => {
     const uuid = card.id.replace('card-', '');
     card.style.borderColor = selectedUUIDs.has(uuid) ? '#0057b8' : '#ddd';
   });
+
+  saveState();
 }
 </script>
 
-<div id="chat-panel-wrapper" style="display:none; position:fixed; bottom:60px; left:0; right:0; z-index:99;
-  padding:0 24px;">
-  <div id="chat-panel"
-       style="height:200px; overflow-y:auto; border:1px solid #ddd; border-radius:4px;
-              padding:8px; background:#fff; font-size:13px;"></div>
-</div>
-
-<div id="selection-panel" style="
-  display:none; position:fixed; bottom:0; left:0; right:0; z-index:100;
-  background:#1a1a2e; color:#fff; padding:12px 24px;
-  box-shadow:0 -2px 8px rgba(0,0,0,.2);">
-  <span id="sel-count" style="font-size:14px; min-width:120px;"></span>
-  <button onclick="clearSelection()"
-    style="padding:4px 12px; border:1px solid rgba(255,255,255,.3); border-radius:4px;
-           background:transparent; color:#fff; cursor:pointer; font-size:13px;">
-    Clear
-  </button>
-  <input id="query-question" type="text" placeholder="Ask a question about the selected datasets…"
-    style="flex:1; min-width:240px; padding:6px 12px; border-radius:4px;
-           border:1px solid rgba(255,255,255,.3); background:rgba(255,255,255,.1);
-           color:#fff; font-size:14px;"
-    onkeydown="if(event.key==='Enter') doChat()">
-  <div style="position:relative; display:inline-block;">
-    <button id="query-fields-btn" onclick="toggleQueryFields(event)"
-      style="padding:6px 10px; border:1px solid rgba(255,255,255,.3); border-radius:4px;
-             background:rgba(255,255,255,.1); color:#fff; cursor:pointer; font-size:13px;"
-      title="Choose dataset fields to include in the query">
-      ⚙ Fields
-    </button>
-    <div id="query-fields-panel" style="display:none; position:absolute; bottom:40px; right:0;
-         background:#fff; color:#222; border:1px solid #ccc; border-radius:6px; padding:10px 14px;
-         box-shadow:0 -4px 12px rgba(0,0,0,.15); z-index:150; min-width:200px; font-size:13px;">
-      <div style="font-weight:bold; margin-bottom:8px; font-size:12px; color:#666;">Include in LLM prompt:</div>
-      <label style="display:block; margin-bottom:6px;"><input type="checkbox" id="qf-description" checked> Description / summary</label>
-      <label style="display:block; margin-bottom:6px;"><input type="checkbox" id="qf-classification" checked> Classification</label>
-      <label style="display:block; margin-bottom:6px;"><input type="checkbox" id="qf-location" checked> Location</label>
-      <label style="display:block; margin-bottom:6px;"><input type="checkbox" id="qf-year" checked> Reference year</label>
-      <label style="display:block; margin-bottom:6px;"><input type="checkbox" id="qf-synonyms"> Synonyms</label>
-      <label style="display:block;"><input type="checkbox" id="qf-type"> Dataset type</label>
-    </div>
-  </div>
-  <button onclick="doChat()"
-    style="padding:6px 16px; border:none; border-radius:4px;
-           background:#0057b8; color:#fff; cursor:pointer; font-size:14px; font-weight:bold;">
-    Ask
-  </button>
-  <button onclick="clearChat()"
-    style="padding:6px 12px; border:1px solid rgba(255,255,255,.3); border-radius:4px;
-           background:transparent; color:#fff; cursor:pointer; font-size:13px;">
-    New chat
-  </button>
-</div>
 {% endblock %}
