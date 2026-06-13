@@ -1,0 +1,28 @@
+GUID
+Country short
+Country name
+Name
+CAS number long
+CAS number short
+Synonym
+Treatment, standards, routes
+Mix and location types
+Further quantitative specifications
+Dataset type
+Data source
+Valid until
+Folder
+All DBs that contain this dataset
+All standard DBs that contain this dataset (new names only)
+All standard DBs that contain this dataset (old names only)
+Existing/New object
+Emission factor compatibility
+Technological representativeness
+Time representativeness
+Geographical representativeness
+Completeness
+Precision
+Methodological appropriateness and consistency
+Overall quality
+RBIR
+Website link

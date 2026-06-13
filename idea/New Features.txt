@@ -1,0 +1,45 @@
+
+General Agents
+clean REquirements.txt, .gitignore, all unused file
+create Claude.md (similar to landscape to path, eg.g run tests)
+create architecture, dev-notes, update readme, create proper tabe for data fields
+
+
+
+
+
+	
+	Step B chromadb
+	Task : implement
+	partly or full implemented : Task 5: index.py — CLI to build the ChromaDB index
+
+	Task 6: Viewer — /search endpoint (RAG + metadata filters)
+
+	Stopp at Step C — Multi-turn Conversational Q&A (do not implmeent)
+	Small bug if from list view a single data set is inspected and then return ends up in card view not in list view
+	We have to adapt the UI a little :  
+		LLM answers to dataset (incl. ranking) shall be integrated inline in the list 
+
+		e.g. 1.) semantic search for alu with recycling content
+				output semantic search
+				1. Alu primary GLO ...
+				2. Alu scrap from cars rims GB ...
+				3. ALU window frame production US...	
+				...
+			 2.) Question to LLM which dataset can be used for casting process of 
+			 	Alu scrap from cars rims GB ...
+				[5/5] : Alu rims are manufactured in casting process therefore this scrap is suitable for casting
+				ALU window frame production US...	
+				[1/5] : Window frames are made from extruded aluminum, which is not suitable for casting and also does inlcude less than 40%  secondary material
+				Alu primary GLO ...
+				[0/5] Primary alu production does not inlcude secondary material
+
+				
+			The user shall than be able to inspect a dataset in detail (read the full document, e.g. technolgy description)
+			when returning to the list view, the list view shall existis until a new search resets all ranking and LLM answers disppear
+			esure it supports multi-turn interactions (make a proposal )
+
+			Before implementing this look also for content in Step C multi turn conversation
+			Then present me a plan
+	
+	
