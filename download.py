@@ -40,6 +40,9 @@ def process_url_from_manifest(
     retry_wait: int = 5,
 ) -> str:
     """Download and export one manifest entry. Returns 'ok', 'skip', or 'fail'."""
+    if not entry.source_url:
+        print(f"[SKIP] {entry.uuid} — no source URL in manifest")
+        return "skip"
     json_path = output_dir / f"{entry.uuid}.json"
     if json_path.exists():
         print(f"[SKIP] {entry.uuid} — already exists")

@@ -47,3 +47,14 @@ def test_process_url_from_manifest_skips_existing(tmp_path):
         result = process_url_from_manifest(entry, tmp_path)
         mock_dl.assert_not_called()
         assert result == "skip"
+
+
+def test_process_url_from_manifest_skips_empty_url(tmp_path):
+    """Skips silently when source_url is blank — no download attempt, no failure."""
+    entry = ManifestEntry(uuid="bbb-222", source_url="", process_type="Unit process", databases=[])
+
+    with patch("download.download_xml") as mock_dl:
+        from download import process_url_from_manifest
+        result = process_url_from_manifest(entry, tmp_path)
+        mock_dl.assert_not_called()
+        assert result == "skip"
