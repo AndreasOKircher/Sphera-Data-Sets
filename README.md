@@ -224,7 +224,11 @@ Keeping the token footprint small matters when batch-processing hundreds of data
 
 ```
 1. Download
-   download.py --urls urls.txt --cookie-file cookie.txt
+   download.py --xls dataset/input/<manifest>.xlsx --cookie-file cookie.txt
+        │                              (primary — bulk download from XLS manifest;
+        │                               auto-skips already-downloaded datasets)
+        │
+        Alternative: --urls urls.txt   (one URL per line, no auto-skip)
         │
         ▼
    dataset/output/{uuid}.xml      ← raw ILCD XML, never modified
@@ -242,8 +246,10 @@ Keeping the token footprint small matters when batch-processing hundreds of data
         ▼
    dataset/chroma/                ← ChromaDB vector index
         └── powered by sentence-transformers (local embeddings)
-            text indexed: name_base + classification + general_comment
-            metadata stored: all JSON fields (for filtering)
+            text indexed: technology_description_summary (if enriched, primary)
+                          name_base + classification + general_comment (fallback)
+            metadata stored: uuid, name_base, dataset_type, process_type,
+                             location, classification, databases (for filtering)
 
 4. View
    view.py                        ← terminal list
@@ -452,12 +458,13 @@ Many LCA datasets (especially electronics components from the same manufacturer)
 
 | Item | Path | Description |
 |---|---|---|
-| Input: URL list | any `.txt` file | One Sphera dataset URL per line |
+| XLS manifest | `dataset/input/<manifest>.xlsx` | Sphera dataset list — primary input for bulk download |
+| Input: URL list | any `.txt` file | One URL per line — alternative to XLS; also used for retrying failed downloads |
 | Input: Session cookie | `cookie.txt` (gitignored) | Browser session cookie for Sphera portal |
 | Input: API key (Anthropic) | `.env` → `ANTHROPIC_API_KEY` | Required when `LLM_PROVIDER=anthropic` |
 | Input: API key (VIO) | `.env` → `API_TOKEN` | Required when `LLM_PROVIDER=vio` |
 | Raw XML | `dataset/output/{uuid}.xml` | Downloaded ILCD XML, never modified |
-| Parsed JSON | `dataset/output/{uuid}.json` | Flat record, 33 fields |
+| Parsed JSON | `dataset/output/{uuid}.json` | Flat record, 36 fields |
 | Enriched sidecar | `dataset/enriched/{uuid}.json` | 12 enrichment fields, added alongside original |
 | Dedup cache | `dataset/dedup/text_cache.json` | SHA-256 hash → UUID mapping |
 
@@ -490,7 +497,7 @@ Many LCA datasets (especially electronics components from the same manufacturer)
 
 | Tool | How to run | Purpose |
 |---|---|---|
-| `download.py` | `python download.py --urls urls.txt --cookie-file cookie.txt` | Download datasets from Sphera portal |
+| `download.py` | `python download.py --xls dataset/input/<manifest>.xlsx --cookie-file cookie.txt` | Download all datasets from XLS manifest (auto-skips existing) |
 | `reparse.py` | `python reparse.py --all` | Re-parse saved XML files → regenerate JSON without re-downloading |
 | `index.py` | `python index.py` | Build or update ChromaDB vector index from JSON files |
 | `enrich.py` | `python enrich.py --all --workers 4` | Enrich all datasets using Claude API |
@@ -504,7 +511,9 @@ Many LCA datasets (especially electronics components from the same manufacturer)
 ### Key CLI flags
 
 **`download.py`**
-- `--url <url>` / `--urls <file>` — single URL or file of URLs
+- `--xls <file>` — path to Sphera XLS manifest; downloads all datasets, auto-skips existing *(primary bulk mode)*
+- `--databases <name> [<name> ...]` — filter to specific databases when using `--xls` (e.g. `"MLC Database - Professional Core 2026"`)
+- `--url <url>` / `--urls <file>` — single URL or file of URLs (no auto-skip)
 - `--cookie <value>` / `--cookie-file <file>` — Sphera session cookie
 - `--output <dir>` — output directory (default: `dataset/output/`)
 

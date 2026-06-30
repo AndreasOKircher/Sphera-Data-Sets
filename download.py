@@ -1,5 +1,6 @@
 import argparse
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -11,13 +12,13 @@ from core.xls_manifest import load_manifest, get_uuids_for_databases, ManifestEn
 DEFAULT_OUTPUT = Path("dataset/output")
 
 
-def process_url(url: str, output_dir: Path, headers: dict | None = None) -> bool:
+def process_url(url: str, output_dir: Path, headers: dict | None = None, retry_wait: int = 5) -> bool:
     """Download, parse, and export one URL. Returns True on success."""
     url = url.strip()
     if not url:
         return True
     try:
-        xml_bytes = download_xml(url, headers=headers)
+        xml_bytes = download_xml(url, headers=headers, retry_wait=retry_wait)
         data = parse_dataset(xml_bytes)
         uuid = data.get("uuid", "unknown")
         name = data.get("name_base", "")
@@ -36,6 +37,7 @@ def process_url_from_manifest(
     entry: ManifestEntry,
     output_dir: Path,
     headers: dict | None = None,
+    retry_wait: int = 5,
 ) -> str:
     """Download and export one manifest entry. Returns 'ok', 'skip', or 'fail'."""
     json_path = output_dir / f"{entry.uuid}.json"
@@ -43,7 +45,7 @@ def process_url_from_manifest(
         print(f"[SKIP] {entry.uuid} — already exists")
         return "skip"
     try:
-        xml_bytes = download_xml(entry.source_url, headers=headers)
+        xml_bytes = download_xml(entry.source_url, headers=headers, retry_wait=retry_wait)
         data = parse_dataset(xml_bytes)
         # Inject manifest-sourced fields into the data model
         data["source_url"] = entry.source_url
@@ -75,6 +77,18 @@ def main():
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT), help="Output directory")
     parser.add_argument("--cookie", help="Cookie header value for authenticated requests")
     parser.add_argument("--cookie-file", help="Path to a text file containing the cookie value")
+    parser.add_argument(
+        "--delay",
+        type=float,
+        default=1.0,
+        help="Seconds to wait between download requests (default: 1.0)",
+    )
+    parser.add_argument(
+        "--retry-wait",
+        type=int,
+        default=5,
+        help="Initial seconds to wait after a 429 before retrying; doubles each attempt (default: 5)",
+    )
     args = parser.parse_args()
 
     output_dir = Path(args.output)
@@ -105,10 +119,12 @@ def main():
         counts = {"ok": 0, "skip": 0, "fail": 0}
         failed_entries = []
         for entry in entries:
-            result = process_url_from_manifest(entry, output_dir, headers=headers)
+            result = process_url_from_manifest(entry, output_dir, headers=headers, retry_wait=args.retry_wait)
             counts[result] += 1
             if result == "fail":
                 failed_entries.append(entry)
+            if result != "skip" and args.delay > 0:
+                time.sleep(args.delay)
 
         print(f"\nDone. {counts['ok']} ok · {counts['skip']} skipped · {counts['fail']} failed.")
         if failed_entries:
@@ -125,9 +141,11 @@ def main():
     urls = [u.strip() for u in urls if u.strip()]
 
     failed_urls = []
-    for url in urls:
-        if not process_url(url, output_dir, headers=headers):
+    for i, url in enumerate(urls):
+        if not process_url(url, output_dir, headers=headers, retry_wait=args.retry_wait):
             failed_urls.append(url)
+        if i < len(urls) - 1 and args.delay > 0:
+            time.sleep(args.delay)
 
     total = len(urls)
     succeeded = total - len(failed_urls)
