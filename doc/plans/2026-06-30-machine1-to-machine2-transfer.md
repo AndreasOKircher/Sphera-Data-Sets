@@ -1,7 +1,12 @@
 # Machine 1 → Machine 2 Transfer Plan
 
 **Date:** 2026-06-30  
-**Goal:** Download the complete Sphera dataset corpus on Machine 1, test enrichment and the web viewer locally, then transfer everything to Machine 2 (limited internet) for VIO-based enrichment and ongoing viewer use.
+**Goal:** Download the complete Sphera dataset corpus on Machine 1, test enrichment and the
+web viewer locally, then transfer the gitignored data files to Machine 2 (company environment,
+restricted internet) for VIO-based enrichment and ongoing viewer use.
+
+**Machine 2 setup assumed:** Python environment installed, repo cloned/pulled from git,
+`pip install -r requirements.txt` already done.
 
 ---
 
@@ -46,7 +51,6 @@ Five corrections applied to `README.md`:
 
 - Auto-skips the 6,723 already downloaded — safe to re-run at any time
 - Prints `[OK]`, `[SKIP]`, or `[FAIL]` per dataset
-- On completion: `Done. N ok · N skipped · N failed.`
 - If failures occur → `dataset/output/failed_uuids_<timestamp>.txt` is written
 
 ### A3. Retry failures
@@ -70,11 +74,11 @@ Repeat until 0 failures. Target: ~19,644 JSON+XML pairs in `dataset/output/`.
 .venv\Scripts\python index.py
 ```
 
-- Reads all `dataset/output/*.json`
-- Merges enrichment sidecars from `dataset/enriched/` (if present)
+- Reads all `dataset/output/*.json`, merges any enrichment sidecars
 - Builds/updates `dataset/chroma/`
-- Uses local sentence-transformers — no internet needed after the model is cached
-- **The embedding model (~90 MB) downloads once from HuggingFace on first use.** Ensure this completes on Machine 1 before copying to USB (see Phase E).
+- On first run, downloads the ChromaDB ONNX embedding model (~80 MB) to:
+  `C:\Users\Andre\.cache\chroma\onnx_models\`  
+  **Run this on Machine 1 before copying to USB** so the cache is populated.
 
 Estimated runtime: 30–60 min for the full corpus.
 
@@ -99,8 +103,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 - Skips the 388 already enriched
-- Deduplication: datasets sharing identical `technology_description` text share one API call (cheaper)
-- Press Ctrl+C to stop when enough are done — completed sidecars and the dedup cache persist
+- Press Ctrl+C to stop when enough are done — completed sidecars and dedup cache persist
 - Re-running is safe (idempotent)
 
 ### C3. Re-index to pick up new summaries
@@ -117,9 +120,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 .venv\Scripts\python viewer/app.py
 ```
 
-Browse to `http://localhost:5000`
-
-Verify:
+Browse to `http://localhost:5000` and verify:
 - Dataset list loads
 - Semantic search returns results
 - LLM Q&A and chat work (Anthropic via `.env`)
@@ -127,58 +128,72 @@ Verify:
 
 ---
 
-## Phase E — Package for USB Transfer
+## Phase E — USB Transfer to Machine 2
 
-### E1. Cache the sentence-transformers model
+### E1. What to copy to the USB stick
 
-Run Phase B (index.py) first. This downloads and caches the embedding model at:
+These are all gitignored — everything else comes from the repo.
 
-```
-C:\Users\<username>\.cache\torch\sentence_transformers\
-```
-
-Copy this folder to the USB stick. On Machine 2, set before first run:
-
-```
-SENTENCE_TRANSFORMERS_HOME=<path-to-copied-model-cache>
-```
-
-Add this to `.env` on Machine 2 so the Flask app picks it up automatically.
-
-### E2. Contents of the USB stick
-
-| What | Source path | Est. size |
+| What | Source path on Machine 1 | Est. size |
 |---|---|---|
-| Codebase (all `.py`, `viewer/`, `core/`, `tests/`, `requirements.txt`, `.env.example`, `README.md`, `CLAUDE.md`) | project root | ~5 MB |
 | Downloaded datasets | `dataset/output/` | ~4–5 GB |
 | ChromaDB index | `dataset/chroma/` | ~500–700 MB |
 | Enrichment sidecars | `dataset/enriched/` | ~10–50 MB |
 | Dedup cache | `dataset/dedup/` | <1 MB |
-| XLS manifest | `dataset/input/` | <1 MB |
-| Sentence-transformers model cache | `C:\Users\<username>\.cache\torch\sentence_transformers\` | ~90 MB |
-
-**Do NOT copy:** `.venv/` (recreate on Machine 2), `.git/` (not needed)
+| XLS manifest | `dataset/input/Sphera-Dataset-List-MLC-Databases-2026.1-Edition.xlsx` | <1 MB |
+| ChromaDB ONNX model cache | `C:\Users\Andre\.cache\chroma\onnx_models\` | ~80 MB |
 
 **Minimum USB size: 16 GB**
+
+> The `.env` file with VIO credentials is also gitignored. Either copy it from Machine 1
+> or create a fresh one on Machine 2 from `.env.example`.
+
+### E2. What Machine 2 gets from the repo (nothing to copy)
+
+- All Python source code (`core/`, `viewer/`, `*.py`)
+- `requirements.txt`, `.env.example`, `README.md`, `CLAUDE.md`
+- `dataset/input/*.txt` (URL lists, if any)
 
 ---
 
 ## Phase F — Machine 2 Setup
 
-### F1. Install Python 3.12
-
-From python.org (one-time internet download, can be done before receiving the USB stick).
-
-### F2. Create venv and install dependencies
+### F1. Clone/pull the repo and install dependencies
 
 ```bash
+git clone <repo-url>   # or git pull if already cloned
+cd Sphera-Data-Sets
 python -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
 ```
 
-This is the only step requiring internet on Machine 2. All packages install from PyPI.
+> If PyPI is blocked: run `pip download -r requirements.txt -d usb_packages/` on Machine 1
+> first, copy `usb_packages/` to the USB stick, then on Machine 2 use:
+> `.venv\Scripts\pip install --no-index --find-links usb_packages/ -r requirements.txt`
+> The full download is ~115 wheel files / 253 MB.
 
-### F3. Configure `.env` for VIO
+### F2. Copy USB data into the project folder
+
+Place the USB contents into the matching paths:
+
+```
+usb:\dataset\output\        →  <project>\dataset\output\
+usb:\dataset\chroma\        →  <project>\dataset\chroma\
+usb:\dataset\enriched\      →  <project>\dataset\enriched\
+usb:\dataset\dedup\         →  <project>\dataset\dedup\
+usb:\Sphera-Dataset-List-MLC-Databases-2026.1-Edition.xlsx  →  <project>\dataset\input\
+```
+
+### F3. Copy the ChromaDB ONNX model cache
+
+```
+usb:\onnx_models\   →   C:\Users\<username>\.cache\chroma\onnx_models\
+```
+
+Create `C:\Users\<username>\.cache\chroma\` first if it does not exist.
+ChromaDB finds the model automatically — no env var needed.
+
+### F4. Configure `.env` for VIO
 
 Copy `.env.example` → `.env`, then fill in:
 
@@ -188,34 +203,30 @@ LLM_MODEL=Default
 API_TOKEN=<your VIO token>
 VIO_BASE_URL=https://vio.automotive-wan.com:446
 VIO_TENANT_ID=default_tenant
-
-# Point at the copied model cache so no HuggingFace download is needed:
-SENTENCE_TRANSFORMERS_HOME=C:\path\to\copied\sentence_transformers\cache
 ```
 
-### F4. Start the web viewer
+### F5. Start the web viewer
 
 ```bash
 .venv\Scripts\python viewer/app.py
 ```
 
-Browse to `http://localhost:5000` — loads all datasets from the USB-transferred `dataset/` folders.
+Browse to `http://localhost:5000` — all datasets load from the copied `dataset/` folders.
 
-### F5. Continue enrichment with VIO
+### F6. Continue enrichment with VIO
 
 ```bash
 .venv\Scripts\python enrich.py --all --workers 4 --provider vio
 ```
 
-Skips datasets already enriched on Machine 1. Run repeatedly until complete.
+Skips datasets already enriched on Machine 1. Only `vio.automotive-wan.com` needs to be
+reachable — no other internet access required.
 
-### F6. Re-index after each enrichment session
+### F7. Re-index after each enrichment session
 
 ```bash
 .venv\Scripts\python index.py
 ```
-
-Run this after any enrichment session so that newly enriched summaries appear in semantic search.
 
 ---
 
@@ -223,33 +234,34 @@ Run this after any enrichment session so that newly enriched summaries appear in
 
 | Step | Machine | Internet required |
 |---|---|---|
-| Download datasets from Sphera | Machine 1 | Yes (portal + session cookie) |
-| Anthropic test enrichment | Machine 1 | Yes (Anthropic API) |
-| `pip install -r requirements.txt` | Machine 2 | Yes (one-time) |
-| VIO enrichment | Machine 2 | Yes (VIO API only) |
-| Embedding / indexing | Both | No (local model after cache is copied) |
-| Web viewer | Both | No |
+| Download datasets from Sphera | Machine 1 | Yes — Sphera portal + session cookie |
+| Anthropic test enrichment | Machine 1 | Yes — Anthropic API |
+| `pip install -r requirements.txt` | Machine 2 | Yes — PyPI (fallback: wheels on USB) |
+| ChromaDB ONNX model | Machine 2 | **No** — cache copied from Machine 1 |
+| Embedding / indexing | Machine 2 | **No** — local ONNX model |
+| Web viewer | Machine 2 | **No** |
+| VIO enrichment | Machine 2 | Yes — VIO API only (`vio.automotive-wan.com`) |
 
 ---
 
 ## Execution Checklist
 
 ### Machine 1
-- [ ] A1 — Refresh `cookie.txt`
+- [x] A1 — Refresh `cookie.txt`
 - [ ] A2 — Run `download.py --xls` (all 19,644 datasets)
 - [ ] A3 — Retry any failed downloads
-- [ ] B  — Run `index.py` (full index + caches embedding model)
-- [ ] C1 — Set Anthropic key in `.env`
+- [ ] B  — Run `index.py` (full index + populates ONNX model cache)
+- [x] C1 — Set Anthropic key in `.env`
 - [ ] C2 — Run `enrich.py --all` (stop after 200–500 new enrichments)
 - [ ] C3 — Re-run `index.py`
 - [ ] D  — Verify web viewer at localhost:5000
-- [ ] E1 — Locate and copy sentence-transformers cache
-- [ ] E2 — Copy all items to USB stick
+- [ ] E1 — Copy all listed items to USB stick
 
 ### Machine 2
-- [ ] F1 — Install Python 3.12
-- [ ] F2 — Create venv + `pip install -r requirements.txt`
-- [ ] F3 — Create `.env` with VIO credentials + `SENTENCE_TRANSFORMERS_HOME`
-- [ ] F4 — Verify web viewer at localhost:5000
-- [ ] F5 — Run `enrich.py --all --provider vio`
-- [ ] F6 — Re-run `index.py` after enrichment
+- [ ] F1 — Clone/pull repo + `pip install -r requirements.txt`
+- [ ] F2 — Copy USB data into `dataset/` folder
+- [ ] F3 — Copy ONNX cache to `C:\Users\<username>\.cache\chroma\onnx_models\`
+- [ ] F4 — Create `.env` with VIO credentials
+- [ ] F5 — Verify web viewer at localhost:5000
+- [ ] F6 — Run `enrich.py --all --provider vio`
+- [ ] F7 — Re-run `index.py` after enrichment
