@@ -62,7 +62,10 @@ The session cookie can expire during a long run. If any datasets fail:
 .venv\Scripts\python download.py --urls "dataset/output/failed_uuids_<timestamp>.txt" --cookie-file cookie.txt
 ```
 
-Repeat until 0 failures. Target: ~19,644 JSON+XML pairs in `dataset/output/`.
+Repeat until 0 failures. Target: **19,112 JSON+XML pairs** in `dataset/output/`.
+
+> 532 of the 19,644 XLS entries have no URL in the manifest and cannot be downloaded —
+> they are silently skipped. The realistic downloadable total is 19,112.
 
 **Estimated final size of `dataset/output/`: 4–5 GB**
 
