@@ -134,16 +134,26 @@ Browse to `http://localhost:5000` and verify:
 
 These are all gitignored — everything else comes from the repo.
 
-| What | Source path on Machine 1 | Est. size |
-|---|---|---|
-| Downloaded datasets | `dataset/output/` | ~4–5 GB |
-| ChromaDB index | `dataset/chroma/` | ~500–700 MB |
-| Enrichment sidecars | `dataset/enriched/` | ~10–50 MB |
-| Dedup cache | `dataset/dedup/` | <1 MB |
-| XLS manifest | `dataset/input/Sphera-Dataset-List-MLC-Databases-2026.1-Edition.xlsx` | <1 MB |
-| ChromaDB ONNX model cache | `C:\Users\Andre\.cache\chroma\onnx_models\` | ~80 MB |
+| What | Source path on Machine 1 | Est. size | Purpose |
+|---|---|---|---|
+| Downloaded datasets | `dataset/output/` | ~4–5 GB | Parsed JSON + raw XML for all datasets — **required** |
+| Enrichment sidecars | `dataset/enriched/` | ~10–50 MB | LLM summaries already created on Machine 1 — **required** |
+| Dedup cache | `dataset/dedup/` | <1 MB | Avoids re-enriching duplicates — **required** |
+| XLS manifest | `dataset/input/Sphera-Dataset-List-MLC-Databases-2026.1-Edition.xlsx` | <1 MB | Source of URLs / database metadata — **required** |
+| ChromaDB ONNX embedding model | `C:\Users\Andre\.cache\chroma\onnx_models\` | ~80 MB | Converts search queries to vectors — **required** for semantic search and indexing |
+| ChromaDB index | `dataset/chroma/` | ~500–700 MB | Pre-built vector database — **optional** (see note below) |
 
-**Minimum USB size: 16 GB**
+> **ChromaDB index is optional:** if you copy `dataset/output/` (the JSON files), you can
+> rebuild the index on Machine 2 by running `index.py` — it takes 30–60 min but saves
+> 500–700 MB on the USB stick. Copy `dataset/chroma/` only if you want to skip that wait.
+>
+> **ONNX model vs ChromaDB index — they are two different things:**
+> - `dataset/chroma/` — the database of pre-computed embeddings for all 19,644 datasets
+> - `C:\Users\Andre\.cache\chroma\onnx_models\` — the model that embeds *search queries*
+>   at runtime so they can be compared against the database
+> Both live under `.cache\chroma\` but serve different roles. The ONNX model is always needed.
+
+**Minimum USB size: 16 GB** (12 GB without `dataset/chroma/`)
 
 > The `.env` file with VIO credentials is also gitignored. Either copy it from Machine 1
 > or create a fresh one on Machine 2 from `.env.example`.
